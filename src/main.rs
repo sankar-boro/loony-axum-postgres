@@ -4,6 +4,8 @@
 //! cargo run -p example-tokio-postgres
 //! ```
 
+use std::sync::Arc;
+
 use axum::{
     async_trait,
     extract::{FromRef, FromRequestParts, State},
@@ -12,9 +14,43 @@ use axum::{
     Router,
 };
 use bb8::{Pool, PooledConnection};
-use bb8_postgres::PostgresConnectionManager;
+use bb8_postgres::{PostgresConnectionManager, bb8};
 use tokio_postgres::NoTls;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use bb8_redis::{RedisConnectionManager, bb8 as bb8redis};
+use redis::AsyncCommands;
+
+#[derive(Clone)]
+struct AppState {
+    pub pg_pool: Pool<PostgresConnectionManager<NoTls>>,
+    pub redis_pool: bb8redis::Pool<RedisConnectionManager>
+}
+
+async fn create_connection() -> AppState {
+    // set up connection pool
+    let pg_manager = PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres", NoTls)
+    .unwrap();
+    let pg_pool = Pool::builder().build(pg_manager).await.unwrap();
+
+    tracing::debug!("connecting to redis");
+    let redis_manager = RedisConnectionManager::new("redis://:sankar@127.0.0.1:6379/").unwrap();
+    let redis_pool = bb8redis::Pool::builder().build(redis_manager).await.unwrap();
+
+    {
+        // ping the database before starting
+        let mut conn = redis_pool.get().await.unwrap();
+        conn.set::<&str, &str, ()>("foo", "bar").await.unwrap();
+        let result: String = conn.get("foo").await.unwrap();
+        assert_eq!(result, "bar");
+    }
+    tracing::debug!("successfully connected to redis and pinged it");
+
+    return AppState{
+        pg_pool,
+        redis_pool
+    }
+}
+
 
 #[tokio::main]
 async fn main() {
@@ -26,19 +62,14 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // set up connection pool
-    let manager =
-        PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres", NoTls)
-            .unwrap();
-    let pool = Pool::builder().build(manager).await.unwrap();
-
+    let connection = create_connection().await;
     // build our application with some routes
     let app = Router::new()
         .route(
             "/",
-            get(using_connection_pool_extractor).post(using_connection_extractor),
+            get(get_something),
         )
-        .with_state(pool);
+        .with_state(connection);
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -50,52 +81,52 @@ async fn main() {
 
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
-async fn using_connection_pool_extractor(
-    State(pool): State<ConnectionPool>,
+async fn get_something(
+    State(pool): State<AppState>,
 ) -> Result<String, (StatusCode, String)> {
-    let conn = pool.get().await.map_err(internal_error)?;
+    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
 
     let row = conn
-        .query_one("select 1 + 1", &[])
+        .query("select user_id, fname, lname from users", &[])
         .await
         .map_err(internal_error)?;
-    let two: i32 = row.try_get(0).map_err(internal_error)?;
+    let user_id: i32 = row[0].try_get(0).map_err(internal_error)?;
 
-    Ok(two.to_string())
+    Ok(user_id.to_string())
 }
 
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
-struct DatabaseConnection(PooledConnection<'static, PostgresConnectionManager<NoTls>>);
+// struct DatabaseConnection(PooledConnection<'static, PostgresConnectionManager<NoTls>>);
 
-#[async_trait]
-impl<S> FromRequestParts<S> for DatabaseConnection
-where
-    ConnectionPool: FromRef<S>,
-    S: Send + Sync,
-{
-    type Rejection = (StatusCode, String);
+// #[async_trait]
+// impl<S> FromRequestParts<S> for DatabaseConnection
+// where
+//     ConnectionPool: FromRef<S>,
+//     S: Send + Sync,
+// {
+//     type Rejection = (StatusCode, String);
 
-    async fn from_request_parts(_parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let pool = ConnectionPool::from_ref(state);
+//     async fn from_request_parts(_parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+//         let pool = ConnectionPool::from_ref(state);
 
-        let conn = pool.get_owned().await.map_err(internal_error)?;
+//         let conn = pool.get_owned().await.map_err(internal_error)?;
 
-        Ok(Self(conn))
-    }
-}
+//         Ok(Self(conn))
+//     }
+// }
 
-async fn using_connection_extractor(
-    DatabaseConnection(conn): DatabaseConnection,
-) -> Result<String, (StatusCode, String)> {
-    let row = conn
-        .query_one("select 1 + 1", &[])
-        .await
-        .map_err(internal_error)?;
-    let two: i32 = row.try_get(0).map_err(internal_error)?;
+// async fn post_something(
+//     DatabaseConnection(conn): DatabaseConnection,
+// ) -> Result<String, (StatusCode, String)> {
+//     let row = conn
+//         .query_one("select 1 + 1", &[])
+//         .await
+//         .map_err(internal_error)?;
+//     let two: i32 = row.try_get(0).map_err(internal_error)?;
 
-    Ok(two.to_string())
-}
+//     Ok(two.to_string())
+// }
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
@@ -105,3 +136,35 @@ where
 {
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }
+
+
+// type RedisConnectionPool = bb8redis::Pool<RedisConnectionManager>;
+
+// async fn redis_connection_pool(
+//     State(pool): State<RedisConnectionPool>,
+// ) -> Result<String, (StatusCode, String)> {
+//     let mut conn = pool.get().await.map_err(internal_error)?;
+//     let result: String = conn.get("foo").await.map_err(internal_error)?;
+//     Ok(result)
+// }
+
+// // we can also write a custom extractor that grabs a connection from the pool
+// // which setup is appropriate depends on your application
+// struct RedisDatabaseConnection(bb8redis::PooledConnection<'static, RedisConnectionManager>);
+
+// #[async_trait]
+// impl<S> FromRequestParts<S> for RedisDatabaseConnection
+// where
+//     RedisConnectionPool: FromRef<S>,
+//     S: Send + Sync,
+// {
+//     type Rejection = (StatusCode, String);
+
+//     async fn from_request_parts(_parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+//         let pool = RedisConnectionPool::from_ref(state);
+
+//         let conn = pool.get_owned().await.map_err(internal_error)?;
+
+//         Ok(Self(conn))
+//     }
+// }
