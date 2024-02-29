@@ -1,10 +1,5 @@
-//! Run with
-//!
-//! ```not_rust
-//! cargo run -p example-tokio-postgres
-//! ```
-
-use std::sync::Arc;
+mod route;
+mod auth;
 
 use axum::{
     async_trait,
@@ -19,9 +14,14 @@ use tokio_postgres::NoTls;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use bb8_redis::{RedisConnectionManager, bb8 as bb8redis};
 use redis::AsyncCommands;
+use axum::http::{
+    header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
+    HeaderValue, Method,
+};
+use tower_http::cors::CorsLayer;
 
 #[derive(Clone)]
-struct AppState {
+pub struct AppState {
     pub pg_pool: Pool<PostgresConnectionManager<NoTls>>,
     pub redis_pool: bb8redis::Pool<RedisConnectionManager>
 }
@@ -63,37 +63,39 @@ async fn main() {
         .init();
 
     let connection = create_connection().await;
-    // build our application with some routes
-    let app = Router::new()
-        .route(
-            "/",
-            get(get_something),
-        )
-        .with_state(connection);
+
+
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_credentials(true)
+        .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE]);
+
+    let router  = route::create_router(connection, cors);
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, router).await.unwrap();
 }
 
-type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
+// type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
-async fn get_something(
-    State(pool): State<AppState>,
-) -> Result<String, (StatusCode, String)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+// async fn get_something(
+//     State(pool): State<AppState>,
+// ) -> Result<String, (StatusCode, String)> {
+//     let conn = pool.pg_pool.get().await.map_err(internal_error)?;
 
-    let row = conn
-        .query("select user_id, fname, lname from users", &[])
-        .await
-        .map_err(internal_error)?;
-    let user_id: i32 = row[0].try_get(0).map_err(internal_error)?;
+//     let row = conn
+//         .query("select user_id, fname, lname from users", &[])
+//         .await
+//         .map_err(internal_error)?;
+//     let user_id: i32 = row[0].try_get(0).map_err(internal_error)?;
 
-    Ok(user_id.to_string())
-}
+//     Ok(user_id.to_string())
+// }
 
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
