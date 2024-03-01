@@ -15,7 +15,9 @@ use axum::{
     http::{header, Response},
     Extension,
 };
-
+use time::Duration;
+use tower_sessions::{Expiry, Session, SessionManagerLayer};
+use tower_sessions_redis_store::{fred::prelude::*, RedisStore};
 use crate::AppState;
 
 use crate::auth::login;
@@ -30,8 +32,17 @@ use crate::auth::login;
 
 // }
 
-pub fn create_router(connection: AppState, cors: CorsLayer) -> Router {
+pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
     let auth = Router::new().route("/login", get(login).post(login));
+    let pool = RedisPool::new(RedisConfig::from_url("redis://:sankar@127.0.0.1:6379/").unwrap(), None, None, None, 6).unwrap();
+
+    pool.connect();
+    pool.wait_for_connect().await.unwrap();
+
+    let session_store = RedisStore::new(pool);
+    let session_layer = SessionManagerLayer::new(session_store)
+        .with_secure(false)
+        .with_expiry(Expiry::OnInactivity(Duration::seconds(30)));
 
      Router::new()
         .nest("/api/auth", auth)
@@ -39,5 +50,5 @@ pub fn create_router(connection: AppState, cors: CorsLayer) -> Router {
             "/login",
             get(login),
         )
-        .with_state(connection).layer(cors)
+        .with_state(connection).layer(cors).layer(session_layer)
 }

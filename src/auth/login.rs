@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use axum::{
     extract::State,
     http::{header, Response, StatusCode},
@@ -13,6 +12,7 @@ use axum::{
 use serde_json::json;
 use crate::AppState;
 use serde::Deserialize;
+use tower_sessions::{Expiry, Session, SessionManagerLayer};
 
 #[derive(Deserialize, Debug)]
 pub struct LoginForm {
@@ -29,28 +29,30 @@ pub struct GetUser {
 	lname: String,
 }
 
-fn internal_error<E>(err: E) -> (StatusCode, String)
+fn internal_error<E>(err: E) -> (StatusCode, Json<serde_json::Value>)
 where
     E: std::error::Error,
 {
-    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+		"message": err.to_string(),
+	})))
 }
+
 
 pub async fn login(
 	State(pool): State<AppState>,
+	session: Session,
     Json(body): Json<LoginForm>,
 ) 
 -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)>
 {
 	
 	// request.validate()?;
-	let conn = pool.pg_pool.get().await.map_err(internal_error);
-	if let Ok(conn) = conn {
-
-        let row = conn
+	let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+	let row = conn
         .query_one("select user_id, fname, lname from users where email=$1", &[&body.email])
         .await
-        .map_err(internal_error).unwrap();
+        .map_err(internal_error)?;
 		let user_id: i32 = row.get(0);
 		let fname: String = row.get(1);
 		let lname: String = row.get(2);
@@ -63,11 +65,9 @@ pub async fn login(
 			"lname": lname.clone(),
 		});
 		return Ok(Json(user_response));
-	}
-
-	Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-		"message": "User not found",
-	}))))
+	// Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+	// 	"message": "User not found",
+	// }))))
 
 
 	// validate_user_credentials(&request.password, &password)?;

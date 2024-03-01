@@ -23,7 +23,7 @@ use tower_http::cors::CorsLayer;
 #[derive(Clone)]
 pub struct AppState {
     pub pg_pool: Pool<PostgresConnectionManager<NoTls>>,
-    pub redis_pool: bb8redis::Pool<RedisConnectionManager>
+    // pub redis_pool: bb8redis::Pool<RedisConnectionManager>
 }
 
 async fn create_connection() -> AppState {
@@ -32,22 +32,22 @@ async fn create_connection() -> AppState {
     .unwrap();
     let pg_pool = Pool::builder().build(pg_manager).await.unwrap();
 
-    tracing::debug!("connecting to redis");
-    let redis_manager = RedisConnectionManager::new("redis://:sankar@127.0.0.1:6379/").unwrap();
-    let redis_pool = bb8redis::Pool::builder().build(redis_manager).await.unwrap();
+    // tracing::debug!("connecting to redis");
+    // let redis_manager = RedisConnectionManager::new("redis://:sankar@127.0.0.1:6379/").unwrap();
+    // let redis_pool = bb8redis::Pool::builder().build(redis_manager).await.unwrap();
 
-    {
-        // ping the database before starting
-        let mut conn = redis_pool.get().await.unwrap();
-        conn.set::<&str, &str, ()>("foo", "bar").await.unwrap();
-        let result: String = conn.get("foo").await.unwrap();
-        assert_eq!(result, "bar");
-    }
-    tracing::debug!("successfully connected to redis and pinged it");
+    // {
+    //     // ping the database before starting
+    //     let mut conn = redis_pool.get().await.unwrap();
+    //     conn.set::<&str, &str, ()>("foo", "bar").await.unwrap();
+    //     let result: String = conn.get("foo").await.unwrap();
+    //     assert_eq!(result, "bar");
+    // }
+    // tracing::debug!("successfully connected to redis and pinged it");
 
     return AppState{
         pg_pool,
-        redis_pool
+        // redis_pool
     }
 }
 
@@ -71,7 +71,7 @@ async fn main() {
         .allow_credentials(true)
         .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE]);
 
-    let router  = route::create_router(connection, cors);
+    let router  = route::create_router(connection, cors).await;
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
