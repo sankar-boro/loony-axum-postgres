@@ -1,0 +1,10 @@
+- text/plain: Used for plain text content.
+- text/html: Indicates HTML content, typically used for web pages.
+- text/css: Denotes Cascading Style Sheets (CSS) content.
+- application/json: Used for JSON (JavaScript Object Notation) data, commonly used in web APIs.
+- application/xml: Denotes XML (eXtensible Markup Language) content.
+- application/javascript: Indicates JavaScript code.
+- image/jpeg, image/png, image/gif: Denotes various image formats such as JPEG, PNG, and GIF.
+- audio/mpeg, audio/wav: For audio content, such as MP3 or WAV files.
+- video/mp4, video/quicktime: For video content, such as MP4 or QuickTime files.
+- application/pdf: Denotes PDF (Portable Document Format) documents.
