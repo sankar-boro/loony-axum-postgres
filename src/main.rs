@@ -31,6 +31,10 @@ async fn create_connection() -> AppState {
 
 #[tokio::main]
 async fn main() {
+    let host = std::env::var("HOST").unwrap();
+    let port= std::env::var("PORT").unwrap();
+    let allow_origin = std::env::var("ALLOW_ORIGIN").unwrap();
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -43,7 +47,7 @@ async fn main() {
 
 
     let cors = CorsLayer::new()
-        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_origin(allow_origin.parse::<HeaderValue>().unwrap())
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_credentials(true)
         .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE]);
@@ -51,10 +55,10 @@ async fn main() {
     let router  = route::create_router(connection, cors).await;
 
     // run it
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3005")
+    let listener = tokio::net::TcpListener::bind(format!("{host}:{port}"))
         .await
         .unwrap();
-    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    tracing::info!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, router).await.unwrap();
 }
 

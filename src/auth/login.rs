@@ -8,6 +8,8 @@ use crate::AppState;
 use serde::Deserialize;
 use tower_sessions::Session;
 
+use cookie::{Cookie, CookieBuilder};
+use time::Duration;
 #[derive(Deserialize, Debug)]
 pub struct LoginForm {
 	email: String,
@@ -49,13 +51,23 @@ pub async fn login(
 		"lname": lname.clone(),
 	});
 
-	let mut header_map = HeaderMap::new();
-    header_map.insert(header::AUTHORIZATION, "Authorization Header".parse().unwrap());
     
+	let cookie = CookieBuilder::new("Authorization", "sankar")
+	.domain("http://localhost:3000")
+	.path("/")
+	.secure(true)  // Set to true for HTTPS only
+	.http_only(true) // Set to true to prevent JavaScript access
+	.max_age(Duration::seconds(30)) // Set cookie expiration
+	.build().to_string();
+
+
+	let mut header_map = HeaderMap::new();
+    header_map.insert(header::SET_COOKIE, cookie.parse().unwrap());
 
 	Ok((
 		StatusCode::OK,
 		[(header::CONTENT_TYPE, "application/json")],
+		header_map,
 		Json(user_response),
 	))
 }
