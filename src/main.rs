@@ -1,5 +1,6 @@
 mod route;
 mod auth;
+mod book;
 
 use bb8::Pool;
 use bb8_postgres::{PostgresConnectionManager, bb8};

@@ -43,7 +43,6 @@ pub async fn login(
 ) 
 -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)>
 {
-	// request.validate()?;
 	let conn = pool.pg_pool.get().await.map_err(internal_error)?;
 	let row = conn
         .query_one("select user_id, fname, lname, password from users where phone=$1", &[&body.username])
@@ -76,9 +75,9 @@ pub async fn login(
 	let cookie = CookieBuilder::new("Authorization", "sankar")
 	.domain("http://localhost:3000")
 	.path("/")
-	.secure(true)  // Set to true for HTTPS only
-	.http_only(true) // Set to true to prevent JavaScript access
-	.max_age(Duration::seconds(30)) // Set cookie expiration
+	.secure(true)
+	.http_only(true)
+	.max_age(Duration::seconds(30))
 	.build().to_string();
 
 
@@ -101,7 +100,6 @@ pub async fn signup(
 ) 
 -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)>
 {
-	// request.validate()?;
 	let conn = pool.pg_pool.get().await.map_err(internal_error)?;
 
     let hashed_password= hash(&body.password, DEFAULT_COST).map_err(|err| {(StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
