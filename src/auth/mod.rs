@@ -1,15 +1,14 @@
 use axum::{
-    extract::State,
-    http::{header, HeaderMap, StatusCode},
-    response::IntoResponse, Json,
+    extract::State, http::{self, header, HeaderMap, Response, StatusCode}, response::IntoResponse, Extension, Json
 };
 use serde_json::json;
 use crate::AppState;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 use cookie::CookieBuilder;
 use time::Duration;
 use bcrypt::{verify, hash, DEFAULT_COST};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 
 #[derive(Deserialize, Debug)]
 pub struct LoginForm {
@@ -25,6 +24,18 @@ pub struct SignupForm {
     lname: String
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct UserData {
+	user_id: i32,
+    fname: String,
+    lname: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    data: UserData,
+    exp: usize,
+}
 
 fn internal_error<E>(err: E) -> (StatusCode, Json<serde_json::Value>)
 where
@@ -43,6 +54,8 @@ pub async fn login(
 ) 
 -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)>
 {
+	let secret_key = std::env::var("SECRET_KEY").unwrap();
+
 	let conn = pool.pg_pool.get().await.map_err(internal_error)?;
 	let row = conn
         .query_one("select user_id, fname, lname, password from users where phone=$1", &[&body.username])
@@ -54,9 +67,7 @@ pub async fn login(
 	let lname: String = row.get(2);
 	let password: String = row.get(3);
 
-	let is_valid_password = verify(&body.password, &password).map_err(|err| { (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-		"message": err.to_string(),
-	}))) })?;
+	let is_valid_password = verify(&body.password, &password).map_err(internal_error)?;
 
 	if !is_valid_password {
 		return Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
@@ -65,19 +76,27 @@ pub async fn login(
 	}
 
 	let user_response = json!({
-		"userId": user_id,
-		"phone": &body.username.clone(),
+		"user_id": user_id,
+		"username": &body.username.clone(),
 		"fname": fname.clone(),
 		"lname": lname.clone(),
 	});
 
-    
-	let cookie = CookieBuilder::new("Authorization", "sankar")
-	.domain("http://localhost:3000")
+	let claims = Claims {
+		data: UserData {
+			fname: fname.clone(),
+			lname: lname.clone(),
+			user_id: user_id,
+		},
+		exp: 3000
+	};
+    let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(secret_key.as_ref())).map_err(internal_error)?;
+
+	let cookie = CookieBuilder::new("Authorization", token)
 	.path("/")
 	.secure(true)
 	.http_only(true)
-	.max_age(Duration::seconds(30))
+	.max_age(Duration::days(3))
 	.build().to_string();
 
 
@@ -102,9 +121,7 @@ pub async fn signup(
 {
 	let conn = pool.pg_pool.get().await.map_err(internal_error)?;
 
-    let hashed_password= hash(&body.password, DEFAULT_COST).map_err(|err| {(StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-        "message": err.to_string(),
-    }))) })?;
+    let hashed_password= hash(&body.password, DEFAULT_COST).map_err(internal_error)?;
 	let _ = conn
         .query("INSERT INTO users(username, password, fname, lname) values($1, $2, $3, $4)", &[&body.username, &hashed_password, &body.fname, &body.lname])
         .await
@@ -122,6 +139,42 @@ pub async fn signup(
 		// header_map,
 		Json(user_response),
 	))
+}
+
+
+async fn extract_authorization(header: &http::HeaderMap) -> Option<String> {
+    if let Some(authorization_header) = header.get("authorization") {
+        if let Ok(auth_str) = authorization_header.to_str() {
+            let parts: Vec<&str> = auth_str.split_whitespace().collect();
+            if parts.len() == 2 && parts[0].eq_ignore_ascii_case("Bearer") {
+                return Some(parts[1].to_string());
+            }
+        }
+    }
+    None
+}
+
+pub async fn get_user_session(
+	header: http::HeaderMap,
+) 
+-> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)>
+{
+	let secret_key = std::env::var("SECRET_KEY").unwrap();
+
+	if let Some(token) = extract_authorization(&header).await {
+        let token = decode::<Claims>(&token, &DecodingKey::from_secret(secret_key.as_ref()), &Validation::default()).map_err(internal_error)?;
+		let claims = token.claims;
+		return Ok((
+			StatusCode::OK,
+			[(header::CONTENT_TYPE, "application/json")],
+			// header_map,
+			Json(claims.data),
+		))
+    } else {
+        Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+			"message": "Invalid token".to_string(),
+		}))))
+    }
 }
 
 
