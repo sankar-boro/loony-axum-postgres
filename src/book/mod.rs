@@ -130,6 +130,66 @@ pub async fn edit_book(
 }
 
 #[derive(Deserialize, Serialize)]
+pub struct AddBookNode {
+    book_id: i32,
+    title: String,
+    body: String,
+    images: String,
+    parent_id: Option<i32>,
+}
+
+pub async fn append_book_node(
+    State(pool): State<AppState>,
+    _: Session,
+    Json(body): Json<AddBookNode>,
+) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+
+    let new_node = conn
+    .query_one(
+            "INSERT INTO book(book_id, parent_id, title, body, images) values($1, $2, $3, $4, $5) returning *",
+            &[&body.book_id, &body.parent_id, &body.title, &body.body, &body.images],
+        )
+        .await
+        .map_err(internal_error)?;
+    let update_row = conn
+        .query_one(
+            "SELECT uid, parent_id from book where parent_id=$1",
+            &[&body.parent_id],
+        )
+        .await
+        .map_err(internal_error)?;
+
+    let new_node_uid: i32 = new_node.get(0);
+    if update_row.len() == 1 {
+        let update_row_uid: i32 = update_row.get(0);
+
+        conn.query_one(
+            "UPDATE book SET parent_id=$1 where uid=$2",
+            &[&new_node_uid, &update_row_uid],
+        )
+        .await
+        .map_err(internal_error)?;
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "new_node": {
+                "uid": new_node_uid,
+                "title": &body.title,
+                "body": &body.body,
+                "images": &body.images
+            },
+            "update_node": {
+
+            }
+        })),
+    ))
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct DeleteBook {
     book_id: i32,
 }
