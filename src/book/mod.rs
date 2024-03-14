@@ -1,6 +1,6 @@
 use crate::AppState;
 use axum::{
-    extract::State,
+    extract::{Query, State},
     http::{header, StatusCode},
     response::IntoResponse,
     Json,
@@ -134,8 +134,8 @@ pub struct AddBookNode {
     book_id: i32,
     title: String,
     body: String,
-    images: String,
-    parent_id: Option<i32>,
+    images: Option<String>,
+    parent_id: i32,
 }
 
 pub async fn append_book_node(
@@ -145,31 +145,34 @@ pub async fn append_book_node(
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     let conn = pool.pg_pool.get().await.map_err(internal_error)?;
 
-    let new_node = conn
-    .query_one(
-            "INSERT INTO book(book_id, parent_id, title, body, images) values($1, $2, $3, $4, $5) returning *",
-            &[&body.book_id, &body.parent_id, &body.title, &body.body, &body.images],
-        )
-        .await
-        .map_err(internal_error)?;
     let update_row = conn
         .query_one(
             "SELECT uid, parent_id from book where parent_id=$1",
             &[&body.parent_id],
         )
+        .await;
+
+    let new_node = conn
+    .query_one(
+            "INSERT INTO book(book_id, parent_id, title, body, images) values($1, $2, $3, $4, $5) returning uid",
+            &[&body.book_id, &body.parent_id, &body.title, &body.body, &body.images],
+        )
         .await
         .map_err(internal_error)?;
 
     let new_node_uid: i32 = new_node.get(0);
-    if update_row.len() == 1 {
-        let update_row_uid: i32 = update_row.get(0);
 
-        conn.query_one(
-            "UPDATE book SET parent_id=$1 where uid=$2",
-            &[&new_node_uid, &update_row_uid],
-        )
-        .await
-        .map_err(internal_error)?;
+    if let Ok(update_row) = update_row {
+        if !update_row.is_empty() {
+            let update_row_uid: i32 = update_row.get(0);
+
+            conn.query_one(
+                "UPDATE book SET parent_id=$1 where uid=$2 RETURNING uid",
+                &[&new_node_uid, &update_row_uid],
+            )
+            .await
+            .map_err(internal_error)?;
+        }
     }
 
     Ok((
@@ -267,4 +270,59 @@ where
             "message": err.to_string(),
         })),
     )
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct BookNode {
+    uid: i32,
+    parent_id: Option<i32>,
+    title: String,
+    body: String,
+    images: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct BookInfo {
+    book_id: i32,
+}
+
+pub async fn get_all_book_nodes(
+    State(pool): State<AppState>,
+    query: Query<BookInfo>,
+) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    let book_info: BookInfo = query.0;
+
+    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+    let rows = conn
+        .query(
+            "SELECT uid, parent_id, title, body, images FROM book where book_id=$1",
+            &[&book_info.book_id],
+        )
+        .await
+        .map_err(internal_error)?;
+
+    let mut books: Vec<BookNode> = Vec::new();
+
+    for (index, _) in rows.iter().enumerate() {
+        let uid: i32 = rows[index].get(0);
+        let parent_id: Option<i32> = rows[index].get(1);
+        let title: String = rows[index].get(2);
+        let body: String = rows[index].get(3);
+        let images: Option<String> = rows[index].get(4);
+        books.push(BookNode {
+            uid,
+            parent_id,
+            title,
+            body,
+            images,
+        })
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "data": books
+        })),
+    ))
 }
