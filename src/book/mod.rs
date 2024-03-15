@@ -227,6 +227,40 @@ pub async fn delete_book(
     ))
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct DeleteBookNode {
+    delete_node_id: i32,
+    update_parent_id: i32,
+    update_node_id: Option<i32>,
+}
+
+pub async fn delete_book_node(
+    State(pool): State<AppState>,
+    Json(body): Json<DeleteBookNode>,
+) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+    let _ = conn
+        .execute("DELETE FROM book WHERE uid=$1", &[&body.delete_node_id])
+        .await
+        .map_err(internal_error)?;
+
+    let _ = conn
+        .execute(
+            "UPDATE book set parent_id=$1 WHERE uid=$2",
+            &[&body.update_parent_id, &body.update_node_id],
+        )
+        .await
+        .map_err(internal_error)?;
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "data": "book deleted"
+        })),
+    ))
+}
+
 pub async fn get_all_books(
     State(pool): State<AppState>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {

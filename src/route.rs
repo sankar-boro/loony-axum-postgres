@@ -5,7 +5,9 @@ use axum::{
     Json, Router,
 };
 
-use crate::book::{append_book_node, create_book, delete_book, edit_book, get_all_book_nodes};
+use crate::book::{
+    append_book_node, create_book, delete_book, delete_book_node, edit_book, get_all_book_nodes,
+};
 use crate::{
     auth::{get_user_session, login, signup},
     book::get_all_books,
@@ -56,6 +58,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/create_book", post(create_book))
         .route("/edit_book", post(edit_book))
         .route("/delete_book", post(delete_book))
+        .route("/delete_book_node", post(delete_book_node))
         .route("/append_book_node", post(append_book_node))
         .route("/get_all_books", get(get_all_books))
         .route("/get_all_book_nodes", get(get_all_book_nodes));
