@@ -162,9 +162,10 @@ pub async fn append_book_node(
 
     let new_node_uid: i32 = new_node.get(0);
 
+    let mut update_row_uid: Option<i32> = None;
     if let Ok(update_row) = update_row {
         if !update_row.is_empty() {
-            let update_row_uid: i32 = update_row.get(0);
+            update_row_uid = update_row.get(0);
 
             conn.query_one(
                 "UPDATE book SET parent_id=$1 where uid=$2 RETURNING uid",
@@ -181,12 +182,14 @@ pub async fn append_book_node(
         Json(json!({
             "new_node": {
                 "uid": new_node_uid,
+                "parent_id": &body.parent_id,
                 "title": &body.title,
                 "body": &body.body,
                 "images": &body.images
             },
             "update_node": {
-
+                "update_row_id": update_row_uid,
+                "update_row_parent_id": new_node_uid
             }
         })),
     ))
