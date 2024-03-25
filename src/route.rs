@@ -9,6 +9,11 @@ use crate::blog::{
     append_blog_node, create_blog, delete_blog, delete_blog_node, edit_blog, get_all_blog_nodes,
     get_all_blogs,
 };
+
+use crate::book::{
+    append_book_node, create_book, delete_book, delete_book_node, edit_book, get_all_book_nodes,
+    get_all_books,
+};
 use crate::{
     auth::{get_user_session, login, signup},
     AppState,
@@ -55,7 +60,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         );
 
     let blog_routes = Router::new()
-        .route("/create_blog", post(create_blog))
+        .route("/create", post(create_blog))
         .route("/edit_blog", post(edit_blog))
         .route("/delete_blog", post(delete_blog))
         .route("/delete_blog_node", post(delete_blog_node))
@@ -63,9 +68,19 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/get_all_blogs", get(get_all_blogs))
         .route("/get_all_blog_nodes", get(get_all_blog_nodes));
 
+    let book_routes = Router::new()
+        .route("/create", post(create_book))
+        .route("/edit_book", post(edit_book))
+        .route("/delete_book", post(delete_book))
+        .route("/delete_book_node", post(delete_book_node))
+        .route("/append_book_node", post(append_book_node))
+        .route("/get_all_books", get(get_all_books))
+        .route("/get_all_book_nodes", get(get_all_book_nodes));
+
     Router::new()
         .nest("/api/auth", auth_routes)
         .nest("/api/blog", blog_routes)
+        .nest("/api/book", book_routes)
         .route("/", get(home))
         .with_state(connection)
         .layer(cors)
