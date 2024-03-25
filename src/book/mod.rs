@@ -132,6 +132,39 @@ pub async fn edit_book(
 }
 
 #[derive(Deserialize, Serialize)]
+pub struct EditBookNode {
+    uid: i32,
+    title: String,
+    body: String,
+}
+
+pub async fn edit_book_node(
+    State(pool): State<AppState>,
+    Json(body): Json<EditBookNode>,
+) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+
+    let _ = conn
+        .execute(
+            "UPDATE book SET title=$1, body=$2 WHERE uid=$3",
+            &[&body.title, &body.body, &body.uid],
+        )
+        .await
+        .map_err(internal_error)?;
+
+    let edit_book = json!({
+        "title": &body.title.clone(),
+        "body": &body.body.clone()
+    });
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(edit_book),
+    ))
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct AddBookNode {
     book_id: i32,
     title: String,

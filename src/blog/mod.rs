@@ -363,3 +363,37 @@ pub async fn get_all_blog_nodes(
         })),
     ))
 }
+
+#[derive(Deserialize, Serialize)]
+pub struct EditBlogNode {
+    uid: i32,
+    title: String,
+    body: String,
+}
+
+pub async fn edit_blog_node(
+    State(pool): State<AppState>,
+    Json(body): Json<EditBlogNode>,
+) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+
+    let _ = conn
+        .execute(
+            "UPDATE blog SET title=$1, body=$2 WHERE uid=$3",
+            &[&body.title, &body.body, &body.uid],
+        )
+        .await
+        .map_err(internal_error)?;
+
+    let edit_blog = json!({
+        "uid": &body.uid,
+        "title": &body.title.clone(),
+        "body": &body.body.clone(),
+    });
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(edit_blog),
+    ))
+}
