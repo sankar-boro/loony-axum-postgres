@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.7.4"
+axum = { version = "0.7.4", features=["multipart"]}
 bb8 = "0.7.1"
 bb8-postgres = "0.7.0"
 bb8-redis = "0.14.0"
@@ -26,3 +26,5 @@ time = "0.3.34"
 cookie = "0.18.0"
 bcrypt = "0.15.0"
 jsonwebtoken = "9.2.0"
+futures = "0.3.30"
+futures-util = "0.3.30"

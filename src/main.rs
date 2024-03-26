@@ -1,6 +1,7 @@
 mod auth;
 mod blog;
 mod book;
+mod file;
 mod route;
 
 use axum::http::{
