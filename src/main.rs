@@ -4,6 +4,7 @@ mod book;
 mod error;
 mod file;
 mod route;
+mod traits;
 
 use axum::http::{
     header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
@@ -18,7 +19,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 #[derive(Clone)]
 pub struct Dirs {
     file_upload_tmp: String,
-    // file_upload: String,
+    file_upload: String,
 }
 
 #[derive(Clone)]
@@ -48,7 +49,7 @@ async fn create_connection() -> AppState {
         pg_pool,
         dirs: Dirs {
             file_upload_tmp: String::from(std::env::var("FILE_UPLOADS_TMP").unwrap()),
-            // file_upload: String::from(std::env::var("FILE_UPLOADS").unwrap()),
+            file_upload: String::from(std::env::var("FILE_UPLOADS").unwrap()),
         }, // redis_pool
     };
 }
