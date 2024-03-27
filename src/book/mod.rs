@@ -164,7 +164,7 @@ pub struct AddBookNode {
     book_id: i32,
     title: String,
     body: String,
-    images: Option<String>,
+    images: Vec<Images>,
     parent_id: i32,
     page_id: Option<i32>,
     identity: i16,
@@ -183,11 +183,14 @@ pub async fn append_book_node(
             &[&body.parent_id, &body.identity],
         )
         .await;
-
+    let images = &serde_json::to_string(&body.images).unwrap();
+    let _ = &body
+        .images
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
     let new_node = conn
     .query_one(
             "INSERT INTO book(book_id, page_id, parent_id, title, body, identity, images) values($1, $2, $3, $4, $5, $6, $7) returning uid",
-            &[&body.book_id, &body.page_id, &body.parent_id, &body.title, &body.body, &body.identity, &body.images],
+            &[&body.book_id, &body.page_id, &body.parent_id, &body.title, &body.body, &body.identity, &images],
         )
         .await?;
 
@@ -239,19 +242,13 @@ pub async fn delete_book(
     Json(body): Json<DeleteBook>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
-    let row = conn
-        .query_one("DELETE FROM books WHERE book_id=$1", &[&body.book_id])
+    let _ = conn
+        .execute("DELETE FROM books WHERE book_id=$1", &[&body.book_id])
         .await?;
 
-    if row.len() == 0 {
-        return Ok((
-            StatusCode::OK,
-            [(header::CONTENT_TYPE, "application/json")],
-            Json(json!({
-                "data": "Could not delete book"
-            })),
-        ));
-    }
+    let _ = conn
+        .execute("DELETE FROM book WHERE book_id=$1", &[&body.book_id])
+        .await?;
 
     Ok((
         StatusCode::OK,

@@ -206,20 +206,14 @@ pub async fn delete_blog(
     Json(body): Json<DeleteBlog>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     let conn = pool.pg_pool.get().await.map_err(internal_error)?;
-    let row = conn
-        .query_one("DELETE FROM blogs WHERE blog_id=$1", &[&body.blog_id])
+    let _ = conn
+        .execute("DELETE FROM blogs WHERE blog_id=$1", &[&body.blog_id])
         .await
         .map_err(internal_error)?;
-
-    if row.len() == 0 {
-        return Ok((
-            StatusCode::OK,
-            [(header::CONTENT_TYPE, "application/json")],
-            Json(json!({
-                "data": "Could not delete blog"
-            })),
-        ));
-    }
+    let _ = conn
+        .execute("DELETE FROM blog WHERE blog_id=$1", &[&body.blog_id])
+        .await
+        .map_err(internal_error)?;
 
     Ok((
         StatusCode::OK,
