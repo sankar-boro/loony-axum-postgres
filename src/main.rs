@@ -1,6 +1,7 @@
 mod auth;
 mod blog;
 mod book;
+mod error;
 mod file;
 mod route;
 
@@ -15,15 +16,22 @@ use tower_http::cors::CorsLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
+pub struct Dirs {
+    file_upload_tmp: String,
+    // file_upload: String,
+}
+
+#[derive(Clone)]
 pub struct AppState {
     pub pg_pool: Pool<PostgresConnectionManager<NoTls>>,
+    pub dirs: Dirs,
 }
 
 async fn create_connection() -> AppState {
     let pg_host = std::env::var("PG_HOST").unwrap();
     let pg_user = std::env::var("PG_USER").unwrap();
     let pg_dbname = std::env::var("PG_DBNAME").unwrap();
-    let pg_password = std::env::var("PB_PASSWORD").unwrap();
+    let pg_password = std::env::var("PG_PASSWORD").unwrap();
 
     // set up connection pool
     let pg_manager = PostgresConnectionManager::new_from_stringlike(
@@ -38,7 +46,10 @@ async fn create_connection() -> AppState {
 
     return AppState {
         pg_pool,
-        // redis_pool
+        dirs: Dirs {
+            file_upload_tmp: String::from(std::env::var("FILE_UPLOADS_TMP").unwrap()),
+            // file_upload: String::from(std::env::var("FILE_UPLOADS").unwrap()),
+        }, // redis_pool
     };
 }
 
