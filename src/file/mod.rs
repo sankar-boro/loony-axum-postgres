@@ -19,29 +19,37 @@ pub async fn upload_file(
         let filename = field.file_name().unwrap().to_string();
         let _ = field.content_type().unwrap().to_string();
         let data = field.bytes().await.map_err(internal_error)?;
-        // let local = OffsetDateTime::now_local().unwrap();
         let this_uuid = Uuid::new_v4().to_string();
         let extension = Path::new(&filename)
             .extension()
             .and_then(|ext| ext.to_str())
             .unwrap();
-        let pp = format!(
-            "{}/{}.{}",
-            &state.dirs.file_upload_tmp, &this_uuid, &extension
-        );
-        let upload_path = Path::new(&pp);
+        let new_filename = format!("{}.{}", &this_uuid, &extension);
+        let uploaded_filename = format!("{}/{}", &state.dirs.file_upload_tmp, &new_filename);
+        let upload_path = Path::new(&uploaded_filename);
         let mut image_file = File::create(&upload_path).map_err(internal_error)?;
         image_file.write_all(&data).map_err(internal_error)?;
+        let new_upload = json!({
+            "status": 200,
+            "message": "Uploaded",
+            "data": {
+                "uploaded_filename": &new_filename
+            }
+        });
+
+        return Ok((
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/json")],
+            Json(new_upload),
+        ));
     }
 
-    let new_book = json!({
-        "status": 200,
-        "message": "Uploaded"
-    });
-
     Ok((
-        StatusCode::OK,
+        StatusCode::NOT_FOUND,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(new_book),
+        Json(json!({
+            "status": StatusCode::NOT_FOUND.to_string(),
+            "message": "Image not found",
+        })),
     ))
 }
