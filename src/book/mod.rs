@@ -1,3 +1,5 @@
+use crate::error::AppError;
+use crate::traits::{Images, MoveImages};
 use crate::AppState;
 use axum::{
     extract::{Query, State},
@@ -13,7 +15,7 @@ use tower_sessions::Session;
 pub struct CreateBook {
     title: String,
     body: String,
-    images: String,
+    images: Vec<Images>,
     author_id: i32,
     password: String,
 }
@@ -38,42 +40,41 @@ pub async fn create_book(
     State(pool): State<AppState>,
     _: Session,
     Json(body): Json<CreateBook>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<impl IntoResponse, AppError> {
     let password = std::env::var("PASSWORD").unwrap();
     let identity: i16 = 100;
     if &password != &body.password {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            Json(json!({
-                "message": "UNAUTHORIZED".to_string(),
-            })),
+        return Err(AppError::InternalServerError(
+            "InternalServerError".to_string(),
         ));
     }
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+    let conn = pool.pg_pool.get().await?;
+    let images = &serde_json::to_string(&body.images).unwrap();
+    let _ = &body
+        .images
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
     let row = conn
         .query_one(
             "INSERT INTO books(title, body, images, author_id) VALUES($1, $2, $3, $4) RETURNING book_id",
-            &[&body.title, &body.body, &body.images, &body.author_id],
+            &[&body.title, &body.body, &images, &body.author_id],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let book_id: i32 = row.get(0);
 
     let _ = conn
         .query_one(
             "INSERT INTO book(book_id, page_id, title, identity, body, images) VALUES($1, $2, $3, $4, $5, $6) RETURNING *",
-            &[&book_id, &book_id, &body.title, &identity, &body.body, &body.images],
+            &[&book_id, &book_id, &body.title, &identity, &body.body, &images],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let new_book = json!({
         "book_id": book_id,
         "title": &body.title.clone(),
         "body": &body.body.clone(),
         "identity": &identity,
-        "images": &body.images.clone(),
+        "images": &images,
         "author_id": &body.author_id,
     });
 
@@ -88,24 +89,20 @@ pub async fn edit_book(
     State(pool): State<AppState>,
     _: Session,
     Json(body): Json<EditBook>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<impl IntoResponse, AppError> {
     let password = std::env::var("PASSWORD").unwrap();
     if &password != &body.password {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            Json(json!({
-                "message": "UNAUTHORIZED".to_string(),
-            })),
+        return Err(AppError::InternalServerError(
+            "InternalServerError".to_string(),
         ));
     }
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+    let conn = pool.pg_pool.get().await?;
     let row = conn
         .query_one(
             "UPDATE books SET title=$1 AND body=$2 WHERE book_id=$3",
             &[&body.title, &body.body, &body.book_id],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let book_id: i32 = row.get(0);
 
@@ -114,8 +111,7 @@ pub async fn edit_book(
             "UPDATE book SET title=$1 AND body=$2 WHERE book_id=$3",
             &[&book_id, &body.title, &body.body, &body.book_id],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let edit_book = json!({
         "book_id": book_id,
@@ -141,16 +137,15 @@ pub struct EditBookNode {
 pub async fn edit_book_node(
     State(pool): State<AppState>,
     Json(body): Json<EditBookNode>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
 
     let _ = conn
         .execute(
             "UPDATE book SET title=$1, body=$2 WHERE uid=$3",
             &[&body.title, &body.body, &body.uid],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let edit_book = json!({
         "title": &body.title.clone(),
@@ -179,8 +174,8 @@ pub async fn append_book_node(
     State(pool): State<AppState>,
     _: Session,
     Json(body): Json<AddBookNode>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
 
     let update_row = conn
         .query_one(
@@ -194,8 +189,7 @@ pub async fn append_book_node(
             "INSERT INTO book(book_id, page_id, parent_id, title, body, identity, images) values($1, $2, $3, $4, $5, $6, $7) returning uid",
             &[&body.book_id, &body.page_id, &body.parent_id, &body.title, &body.body, &body.identity, &body.images],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let new_node_uid: i32 = new_node.get(0);
     let mut update_row_uid: Option<i32> = None;
@@ -208,8 +202,7 @@ pub async fn append_book_node(
                     "UPDATE book SET parent_id=$1 where uid=$2 RETURNING uid",
                     &[&new_node_uid, &update_row_uid],
                 )
-                .await
-                .map_err(internal_error)?;
+                .await?;
             }
         }
     }
@@ -244,12 +237,11 @@ pub async fn delete_book(
     State(pool): State<AppState>,
     _: Session,
     Json(body): Json<DeleteBook>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
     let row = conn
         .query_one("DELETE FROM books WHERE book_id=$1", &[&body.book_id])
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     if row.len() == 0 {
         return Ok((
@@ -280,20 +272,18 @@ pub struct DeleteBookNode {
 pub async fn delete_book_node(
     State(pool): State<AppState>,
     Json(body): Json<DeleteBookNode>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
     let _ = conn
         .execute("DELETE FROM book WHERE uid=$1", &[&body.delete_node_id])
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let _ = conn
         .execute(
             "UPDATE book set parent_id=$1 WHERE uid=$2",
             &[&body.update_parent_id, &body.update_node_id],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     Ok((
         StatusCode::OK,
@@ -304,14 +294,11 @@ pub async fn delete_book_node(
     ))
 }
 
-pub async fn get_all_books(
-    State(pool): State<AppState>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+pub async fn get_all_books(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query("SELECT book_id, title, body, images FROM books", &[])
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let mut books: Vec<GetBook> = Vec::new();
 
@@ -337,18 +324,6 @@ pub async fn get_all_books(
     ))
 }
 
-fn internal_error<E>(err: E) -> (StatusCode, Json<serde_json::Value>)
-where
-    E: std::error::Error,
-{
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(json!({
-            "message": err.to_string(),
-        })),
-    )
-}
-
 #[derive(Deserialize, Serialize)]
 pub struct BookNode {
     uid: i32,
@@ -368,17 +343,16 @@ pub struct BookInfo {
 pub async fn get_all_book_nodes(
     State(pool): State<AppState>,
     query: Query<BookInfo>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<impl IntoResponse, AppError> {
     let book_info: BookInfo = query.0;
 
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+    let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
             "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1",
             &[&book_info.book_id],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let mut books: Vec<BookNode> = Vec::new();
 
