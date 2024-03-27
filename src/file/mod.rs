@@ -1,6 +1,9 @@
-use crate::{error::internal_error, AppState};
+use crate::{
+    error::{internal_error, AppError},
+    AppState,
+};
 use axum::{
-    extract::{Multipart, State},
+    extract::{Multipart, Path as AxumPath, State},
     http::{header, StatusCode},
     response::IntoResponse,
     Json,
@@ -51,5 +54,22 @@ pub async fn upload_file(
             "status": StatusCode::NOT_FOUND.to_string(),
             "message": "Image not found",
         })),
+    ))
+}
+
+pub async fn get_file(
+    State(state): State<AppState>,
+    AxumPath(filename): AxumPath<String>,
+) -> Result<impl IntoResponse, AppError> {
+    // Assuming files are stored in a directory named 'files'
+    let file_path = format!("{}/{}", &state.dirs.file_upload, filename);
+
+    // Attempt to read the file contents
+    let f = std::fs::read(&file_path)?;
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        f,
     ))
 }
