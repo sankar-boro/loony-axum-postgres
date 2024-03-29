@@ -64,8 +64,8 @@ pub async fn create_book(
 
     let _ = conn
         .query_one(
-            "INSERT INTO book(book_id, page_id, title, identity, body, images) VALUES($1, $2, $3, $4, $5, $6) RETURNING *",
-            &[&book_id, &book_id, &body.title, &identity, &body.body, &images],
+            "INSERT INTO book(book_id, title, identity, body, images) VALUES($1, $2, $3, $4, $5) RETURNING *",
+            &[&book_id, &body.title, &identity, &body.body, &images],
         )
         .await?;
 
@@ -219,7 +219,7 @@ pub async fn append_book_node(
                 "parent_id": &body.parent_id,
                 "title": &body.title,
                 "body": &body.body,
-                "images": &body.images,
+                "images": &images,
                 "identity": &body.identity,
                 "page_id": &body.page_id
             },
@@ -261,9 +261,32 @@ pub async fn delete_book(
 
 #[derive(Deserialize, Serialize)]
 pub struct DeleteBookNode {
+    page_id: i32,
+    identity: i16,
     delete_node_id: i32,
     update_parent_id: i32,
     update_node_id: Option<i32>,
+}
+
+pub async fn test_query(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
+    let page_ids: Vec<i32> = Vec::from([1, 2]);
+    let rows = conn
+        .query("SELECT uid FROM book where page_id = ANY($1)", &[&page_ids])
+        .await?;
+
+    for i in rows.iter() {
+        let uid: i32 = i.get(0);
+        println!("{}", uid);
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "data": "book deleted"
+        })),
+    ))
 }
 
 pub async fn delete_book_node(
@@ -271,6 +294,40 @@ pub async fn delete_book_node(
     Json(body): Json<DeleteBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
+
+    let mut delete_row_ids: Vec<i32> = Vec::new();
+    let delete_rows = conn
+        .query("SELECT uid FROM book where page_id=$1", &[&body.page_id])
+        .await?;
+
+    if delete_rows.len() > 0 {
+        for row in delete_rows.iter() {
+            let uid = row.get(0);
+            delete_row_ids.push(uid);
+        }
+    }
+    // println!("delete_row_ids_1 {:?}", delete_row_ids);
+
+    if *&body.identity == 101 {
+        let delete_rows_two = conn
+            .query(
+                "SELECT uid FROM book where page_id=ANY($1)",
+                &[&delete_row_ids],
+            )
+            .await?;
+
+        if delete_rows_two.len() > 0 {
+            for row2 in delete_rows_two.iter() {
+                let uid2 = row2.get(0);
+                delete_row_ids.push(uid2);
+            }
+        }
+    }
+
+    // println!("delete_row_ids_2 {:?}", delete_row_ids);
+    let _ = conn
+        .execute("DELETE FROM book WHERE uid=ANY($1)", &[&delete_row_ids])
+        .await?;
     let _ = conn
         .execute("DELETE FROM book WHERE uid=$1", &[&body.delete_node_id])
         .await?;

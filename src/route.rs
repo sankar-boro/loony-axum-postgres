@@ -5,9 +5,12 @@ use axum::{
     Json, Router,
 };
 
-use crate::blog::{
-    append_blog_node, create_blog, delete_blog, delete_blog_node, edit_blog, edit_blog_node,
-    get_all_blog_nodes, get_all_blogs,
+use crate::{
+    blog::{
+        append_blog_node, create_blog, delete_blog, delete_blog_node, edit_blog, edit_blog_node,
+        get_all_blog_nodes, get_all_blogs,
+    },
+    book::test_query,
 };
 
 use crate::book::{
@@ -88,6 +91,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/api/upload_file", post(upload_file))
         .route("/api/i/:filename", get(get_file))
         .route("/", get(home))
+        .route("/test_query", get(test_query))
         .with_state(connection)
         .layer(cors)
         .layer(session_layer)
