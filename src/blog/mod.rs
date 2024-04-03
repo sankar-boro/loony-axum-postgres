@@ -1,3 +1,4 @@
+use crate::traits::{Images, MoveImages};
 use crate::AppState;
 use axum::{
     extract::{Query, State},
@@ -13,7 +14,7 @@ use tower_sessions::Session;
 pub struct CreateBlog {
     title: String,
     body: String,
-    images: String,
+    images: Vec<Images>,
     author_id: i32,
     password: String,
 }
@@ -49,10 +50,14 @@ pub async fn create_blog(
         ));
     }
     let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+    let _ = &body
+        .images
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
+    let images = &serde_json::to_string(&body.images).unwrap();
     let row = conn
         .query_one(
             "INSERT INTO blogs(title, body, images, author_id) VALUES($1, $2, $3, $4) RETURNING blog_id",
-            &[&body.title, &body.body, &body.images, &body.author_id],
+            &[&body.title, &body.body, &images, &body.author_id],
         )
         .await
         .map_err(internal_error)?;
@@ -62,7 +67,7 @@ pub async fn create_blog(
     let _ = conn
         .query_one(
             "INSERT INTO blog(blog_id, title, body, images) VALUES($1, $2, $3, $4) RETURNING *",
-            &[&blog_id, &body.title, &body.body, &body.images],
+            &[&blog_id, &body.title, &body.body, &images],
         )
         .await
         .map_err(internal_error)?;
@@ -71,7 +76,7 @@ pub async fn create_blog(
         "blog_id": blog_id,
         "title": &body.title.clone(),
         "body": &body.body.clone(),
-        "images": &body.images.clone(),
+        "images": &images,
         "author_id": &body.author_id,
     });
 

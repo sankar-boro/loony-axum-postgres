@@ -297,7 +297,10 @@ pub async fn delete_book_node(
 
     let mut delete_row_ids: Vec<i32> = Vec::new();
     let delete_rows = conn
-        .query("SELECT uid FROM book where page_id=$1", &[&body.page_id])
+        .query(
+            "SELECT uid FROM book where page_id=$1",
+            &[&body.delete_node_id],
+        )
         .await?;
 
     if delete_rows.len() > 0 {
@@ -306,7 +309,6 @@ pub async fn delete_book_node(
             delete_row_ids.push(uid);
         }
     }
-    // println!("delete_row_ids_1 {:?}", delete_row_ids);
 
     if *&body.identity == 101 {
         let delete_rows_two = conn
@@ -324,7 +326,6 @@ pub async fn delete_book_node(
         }
     }
 
-    // println!("delete_row_ids_2 {:?}", delete_row_ids);
     let _ = conn
         .execute("DELETE FROM book WHERE uid=ANY($1)", &[&delete_row_ids])
         .await?;
