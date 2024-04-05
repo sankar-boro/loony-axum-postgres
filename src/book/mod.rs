@@ -17,7 +17,6 @@ pub struct CreateBook {
     body: String,
     images: Vec<Images>,
     author_id: i32,
-    password: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -25,7 +24,6 @@ pub struct EditBook {
     book_id: i32,
     title: String,
     body: String,
-    password: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -41,13 +39,7 @@ pub async fn create_book(
     _: Session,
     Json(body): Json<CreateBook>,
 ) -> Result<impl IntoResponse, AppError> {
-    let password = std::env::var("PASSWORD").unwrap();
     let identity: i16 = 100;
-    if &password != &body.password {
-        return Err(AppError::InternalServerError(
-            "InternalServerError".to_string(),
-        ));
-    }
     let conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body
@@ -90,12 +82,6 @@ pub async fn edit_book(
     _: Session,
     Json(body): Json<EditBook>,
 ) -> Result<impl IntoResponse, AppError> {
-    let password = std::env::var("PASSWORD").unwrap();
-    if &password != &body.password {
-        return Err(AppError::InternalServerError(
-            "InternalServerError".to_string(),
-        ));
-    }
     let conn = pool.pg_pool.get().await?;
     let row = conn
         .query_one(
@@ -132,6 +118,8 @@ pub struct EditBookNode {
     uid: i32,
     title: String,
     body: String,
+    identity: i16,
+    book_id: i32,
 }
 
 pub async fn edit_book_node(
@@ -146,6 +134,15 @@ pub async fn edit_book_node(
             &[&body.title, &body.body, &body.uid],
         )
         .await?;
+
+    if *&body.identity == 100 {
+        let _ = conn
+            .execute(
+                "UPDATE books SET title=$1, body=$2 WHERE book_id=$3",
+                &[&body.title, &body.body, &body.book_id],
+            )
+            .await?;
+    }
 
     let edit_book = json!({
         "title": &body.title.clone(),

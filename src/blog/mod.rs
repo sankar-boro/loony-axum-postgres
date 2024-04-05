@@ -1,3 +1,4 @@
+use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
 use crate::AppState;
 use axum::{
@@ -16,7 +17,6 @@ pub struct CreateBlog {
     body: String,
     images: Vec<Images>,
     author_id: i32,
-    password: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -24,7 +24,7 @@ pub struct EditBlog {
     blog_id: i32,
     title: String,
     body: String,
-    password: String,
+    identity: i16,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -39,28 +39,23 @@ pub async fn create_blog(
     State(pool): State<AppState>,
     _: Session,
     Json(body): Json<CreateBlog>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let password = std::env::var("PASSWORD").unwrap();
-    if &password != &body.password {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            Json(json!({
-                "message": "UNAUTHORIZED".to_string(),
-            })),
-        ));
-    }
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
     let _ = &body
         .images
         .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
     let images = &serde_json::to_string(&body.images).unwrap();
+    let _ = &body
+        .images
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
+
     let row = conn
         .query_one(
             "INSERT INTO blogs(title, body, images, author_id) VALUES($1, $2, $3, $4) RETURNING blog_id",
             &[&body.title, &body.body, &images, &body.author_id],
         )
         .await
-        .map_err(internal_error)?;
+        ?;
 
     let blog_id: i32 = row.get(0);
 
@@ -69,8 +64,7 @@ pub async fn create_blog(
             "INSERT INTO blog(blog_id, title, body, images) VALUES($1, $2, $3, $4) RETURNING *",
             &[&blog_id, &body.title, &body.body, &images],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let new_blog = json!({
         "blog_id": blog_id,
@@ -91,24 +85,14 @@ pub async fn edit_blog(
     State(pool): State<AppState>,
     _: Session,
     Json(body): Json<EditBlog>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let password = std::env::var("PASSWORD").unwrap();
-    if &password != &body.password {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            Json(json!({
-                "message": "UNAUTHORIZED".to_string(),
-            })),
-        ));
-    }
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
     let row = conn
         .query_one(
             "UPDATE blogs SET title=$1 AND body=$2 WHERE blog_id=$3",
             &[&body.title, &body.body, &body.blog_id],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let blog_id: i32 = row.get(0);
 
@@ -117,8 +101,7 @@ pub async fn edit_blog(
             "UPDATE blog SET title=$1 AND body=$2 WHERE blog_id=$3",
             &[&blog_id, &body.title, &body.body, &body.blog_id],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let edit_blog = json!({
         "blog_id": blog_id,
@@ -139,7 +122,7 @@ pub struct AddBlogNode {
     blog_id: i32,
     title: String,
     body: String,
-    images: Option<String>,
+    images: Vec<Images>,
     parent_id: i32,
 }
 
@@ -147,8 +130,8 @@ pub async fn append_blog_node(
     State(pool): State<AppState>,
     _: Session,
     Json(body): Json<AddBlogNode>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
 
     let update_row = conn
         .query_one(
@@ -156,14 +139,15 @@ pub async fn append_blog_node(
             &[&body.parent_id],
         )
         .await;
+    let images = &serde_json::to_string(&body.images).unwrap();
 
     let new_node = conn
     .query_one(
             "INSERT INTO blog(blog_id, parent_id, title, body, images) values($1, $2, $3, $4, $5) returning uid",
-            &[&body.blog_id, &body.parent_id, &body.title, &body.body, &body.images],
+            &[&body.blog_id, &body.parent_id, &body.title, &body.body, &images],
         )
         .await
-        .map_err(internal_error)?;
+        ?;
 
     let new_node_uid: i32 = new_node.get(0);
 
@@ -176,8 +160,7 @@ pub async fn append_blog_node(
                 "UPDATE blog SET parent_id=$1 where uid=$2 RETURNING uid",
                 &[&new_node_uid, &update_row_uid],
             )
-            .await
-            .map_err(internal_error)?;
+            .await?;
         }
     }
 
@@ -209,16 +192,14 @@ pub async fn delete_blog(
     State(pool): State<AppState>,
     _: Session,
     Json(body): Json<DeleteBlog>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
     let _ = conn
         .execute("DELETE FROM blogs WHERE blog_id=$1", &[&body.blog_id])
-        .await
-        .map_err(internal_error)?;
+        .await?;
     let _ = conn
         .execute("DELETE FROM blog WHERE blog_id=$1", &[&body.blog_id])
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     Ok((
         StatusCode::OK,
@@ -239,20 +220,18 @@ pub struct DeleteBlogNode {
 pub async fn delete_blog_node(
     State(pool): State<AppState>,
     Json(body): Json<DeleteBlogNode>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
     let _ = conn
         .execute("DELETE FROM blog WHERE uid=$1", &[&body.delete_node_id])
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let _ = conn
         .execute(
             "UPDATE blog set parent_id=$1 WHERE uid=$2",
             &[&body.update_parent_id, &body.update_node_id],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     Ok((
         StatusCode::OK,
@@ -263,14 +242,11 @@ pub async fn delete_blog_node(
     ))
 }
 
-pub async fn get_all_blogs(
-    State(pool): State<AppState>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+pub async fn get_all_blogs(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query("SELECT blog_id, title, body, images FROM blogs", &[])
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let mut blogs: Vec<GetBlog> = Vec::new();
 
@@ -296,18 +272,6 @@ pub async fn get_all_blogs(
     ))
 }
 
-fn internal_error<E>(err: E) -> (StatusCode, Json<serde_json::Value>)
-where
-    E: std::error::Error,
-{
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(json!({
-            "message": err.to_string(),
-        })),
-    )
-}
-
 #[derive(Deserialize, Serialize)]
 pub struct BlogNode {
     uid: i32,
@@ -325,17 +289,16 @@ pub struct BlogInfo {
 pub async fn get_all_blog_nodes(
     State(pool): State<AppState>,
     query: Query<BlogInfo>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<impl IntoResponse, AppError> {
     let blog_info: BlogInfo = query.0;
 
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+    let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
             "SELECT uid, parent_id, title, body, images FROM blog where blog_id=$1",
             &[&blog_info.blog_id],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
 
     let mut blogs: Vec<BlogNode> = Vec::new();
 
@@ -368,26 +331,35 @@ pub struct EditBlogNode {
     uid: i32,
     title: String,
     body: String,
+    identity: i16,
+    blog_id: i32,
 }
 
 pub async fn edit_blog_node(
     State(pool): State<AppState>,
     Json(body): Json<EditBlogNode>,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let conn = pool.pg_pool.get().await.map_err(internal_error)?;
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
 
     let _ = conn
         .execute(
             "UPDATE blog SET title=$1, body=$2 WHERE uid=$3",
             &[&body.title, &body.body, &body.uid],
         )
-        .await
-        .map_err(internal_error)?;
+        .await?;
+
+    if *&body.identity == 100 {
+        let _ = conn
+            .execute(
+                "UPDATE blogs SET title=$1, body=$2 WHERE blog_id=$3",
+                &[&body.title, &body.body, &body.blog_id],
+            )
+            .await?;
+    }
 
     let edit_blog = json!({
-        "uid": &body.uid,
-        "title": &body.title.clone(),
-        "body": &body.body.clone(),
+        "status": 200,
+        "message": "UPDATED",
     });
 
     Ok((
