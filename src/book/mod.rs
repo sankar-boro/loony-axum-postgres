@@ -24,6 +24,7 @@ pub struct EditBook {
     book_id: i32,
     title: String,
     body: String,
+    images: Vec<Images>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -83,10 +84,14 @@ pub async fn edit_book(
     Json(body): Json<EditBook>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
+    let images = &serde_json::to_string(&body.images).unwrap();
+    let _ = &body
+        .images
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
     let row = conn
         .query_one(
-            "UPDATE books SET title=$1 AND body=$2 WHERE book_id=$3",
-            &[&body.title, &body.body, &body.book_id],
+            "UPDATE books SET title=$1, body=$2, $images=$3 WHERE book_id=$4",
+            &[&body.title, &body.body, &images, &body.book_id],
         )
         .await?;
 
@@ -94,8 +99,8 @@ pub async fn edit_book(
 
     let _ = conn
         .query_one(
-            "UPDATE book SET title=$1 AND body=$2 WHERE book_id=$3",
-            &[&book_id, &body.title, &body.body, &body.book_id],
+            "UPDATE book SET title=$1, body=$2, $images=$3 WHERE book_id=$4",
+            &[&body.title, &body.body, &images, &body.book_id],
         )
         .await?;
 
@@ -103,7 +108,8 @@ pub async fn edit_book(
         "book_id": book_id,
         "title": &body.title.clone(),
         "body": &body.body.clone(),
-        "book_id": &body.book_id
+        "book_id": &body.book_id,
+        "images": &images,
     });
 
     Ok((
@@ -120,6 +126,7 @@ pub struct EditBookNode {
     body: String,
     identity: i16,
     book_id: i32,
+    images: Vec<Images>,
 }
 
 pub async fn edit_book_node(
@@ -127,26 +134,30 @@ pub async fn edit_book_node(
     Json(body): Json<EditBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
-
+    let images = &serde_json::to_string(&body.images).unwrap();
+    let _ = &body
+        .images
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
     let _ = conn
         .execute(
-            "UPDATE book SET title=$1, body=$2 WHERE uid=$3",
-            &[&body.title, &body.body, &body.uid],
+            "UPDATE book SET title=$1, body=$2, images=$3 WHERE uid=$4",
+            &[&body.title, &body.body, &images, &body.uid],
         )
         .await?;
 
     if *&body.identity == 100 {
         let _ = conn
             .execute(
-                "UPDATE books SET title=$1, body=$2 WHERE book_id=$3",
-                &[&body.title, &body.body, &body.book_id],
+                "UPDATE books SET title=$1, body=$2, images=$3 WHERE book_id=$4",
+                &[&body.title, &body.body, &images, &body.book_id],
             )
             .await?;
     }
 
     let edit_book = json!({
         "title": &body.title.clone(),
-        "body": &body.body.clone()
+        "body": &body.body.clone(),
+        "images": &images,
     });
 
     Ok((

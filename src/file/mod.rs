@@ -73,3 +73,20 @@ pub async fn get_file(
         f,
     ))
 }
+
+pub async fn get_uploaded_file(
+    State(state): State<AppState>,
+    AxumPath(filename): AxumPath<String>,
+) -> Result<impl IntoResponse, AppError> {
+    // Assuming files are stored in a directory named 'files'
+    let file_path = format!("{}/{}", &state.dirs.file_upload_tmp, filename);
+
+    // Attempt to read the file contents
+    let f = std::fs::read(&file_path)?;
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        f,
+    ))
+}
