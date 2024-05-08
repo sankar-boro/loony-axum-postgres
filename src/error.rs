@@ -1,25 +1,13 @@
 use axum::{
+    extract::multipart::MultipartError,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
-use serde_json::json;
+use bcrypt::BcryptError;
 
 pub enum AppError {
     // NotFound(String),
     InternalServerError(String),
-}
-
-pub fn internal_error<E>(err: E) -> (StatusCode, Json<serde_json::Value>)
-where
-    E: std::error::Error,
-{
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(json!({
-            "message": err.to_string(),
-        })),
-    )
 }
 
 impl From<std::io::Error> for AppError {
@@ -36,6 +24,23 @@ impl From<tokio_postgres::Error> for AppError {
 
 impl From<bb8::RunError<tokio_postgres::Error>> for AppError {
     fn from(err: bb8::RunError<tokio_postgres::Error>) -> Self {
+        AppError::InternalServerError(err.to_string())
+    }
+}
+
+impl From<jsonwebtoken::errors::Error> for AppError {
+    fn from(err: jsonwebtoken::errors::Error) -> Self {
+        AppError::InternalServerError(err.to_string())
+    }
+}
+
+impl From<BcryptError> for AppError {
+    fn from(err: BcryptError) -> Self {
+        AppError::InternalServerError(err.to_string())
+    }
+}
+impl From<MultipartError> for AppError {
+    fn from(err: MultipartError) -> Self {
         AppError::InternalServerError(err.to_string())
     }
 }

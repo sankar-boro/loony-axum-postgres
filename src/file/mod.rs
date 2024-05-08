@@ -1,7 +1,4 @@
-use crate::{
-    error::{internal_error, AppError},
-    AppState,
-};
+use crate::{error::AppError, AppState};
 use axum::{
     extract::{Multipart, Path as AxumPath, State},
     http::{header, StatusCode},
@@ -16,12 +13,12 @@ use uuid::Uuid;
 pub async fn upload_file(
     State(state): State<AppState>,
     mut multipart: Multipart,
-) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    if let Some(field) = multipart.next_field().await.map_err(internal_error)? {
+) -> Result<impl IntoResponse, AppError> {
+    if let Some(field) = multipart.next_field().await? {
         let _ = field.name().unwrap().to_string();
         let filename = field.file_name().unwrap().to_string();
         let _ = field.content_type().unwrap().to_string();
-        let data = field.bytes().await.map_err(internal_error)?;
+        let data = field.bytes().await?;
         let this_uuid = Uuid::new_v4().to_string();
         let extension = Path::new(&filename)
             .extension()
@@ -30,8 +27,8 @@ pub async fn upload_file(
         let new_filename = format!("{}.{}", &this_uuid, &extension);
         let uploaded_filename = format!("{}/{}", &state.dirs.file_upload_tmp, &new_filename);
         let upload_path = Path::new(&uploaded_filename);
-        let mut image_file = File::create(&upload_path).map_err(internal_error)?;
-        image_file.write_all(&data).map_err(internal_error)?;
+        let mut image_file = File::create(&upload_path)?;
+        image_file.write_all(&data)?;
         let new_upload = json!({
             "status": 200,
             "message": "Uploaded",
