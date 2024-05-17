@@ -9,7 +9,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 pub struct CreateBook {
@@ -37,7 +36,6 @@ pub struct GetBook {
 
 pub async fn create_book(
     State(pool): State<AppState>,
-    _: Session,
     Json(body): Json<CreateBook>,
 ) -> Result<impl IntoResponse, AppError> {
     let identity: i16 = 100;
@@ -80,7 +78,6 @@ pub async fn create_book(
 
 pub async fn edit_book(
     State(pool): State<AppState>,
-    _: Session,
     Json(body): Json<EditBook>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
@@ -180,7 +177,6 @@ pub struct AddBookNode {
 
 pub async fn append_book_node(
     State(pool): State<AppState>,
-    _: Session,
     Json(body): Json<AddBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
@@ -246,7 +242,6 @@ pub struct DeleteBook {
 
 pub async fn delete_book(
     State(pool): State<AppState>,
-    _: Session,
     Json(body): Json<DeleteBook>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;

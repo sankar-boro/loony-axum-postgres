@@ -9,7 +9,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 pub struct CreateBlog {
@@ -37,7 +36,6 @@ pub struct GetBlog {
 
 pub async fn create_blog(
     State(pool): State<AppState>,
-    _: Session,
     Json(body): Json<CreateBlog>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
@@ -83,7 +81,6 @@ pub async fn create_blog(
 
 pub async fn edit_blog(
     State(pool): State<AppState>,
-    _: Session,
     Json(body): Json<EditBlog>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
@@ -128,7 +125,6 @@ pub struct AddBlogNode {
 
 pub async fn append_blog_node(
     State(pool): State<AppState>,
-    _: Session,
     Json(body): Json<AddBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
@@ -190,7 +186,6 @@ pub struct DeleteBlog {
 
 pub async fn delete_blog(
     State(pool): State<AppState>,
-    _: Session,
     Json(body): Json<DeleteBlog>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;

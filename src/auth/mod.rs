@@ -15,7 +15,6 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use time::Duration;
-use tower_sessions::Session;
 
 #[derive(Deserialize, Debug)]
 pub struct LoginForm {
@@ -51,7 +50,6 @@ struct Claims {
 
 pub async fn login(
     State(pool): State<AppState>,
-    _: Session,
     Json(body): Json<LoginForm>,
 ) -> Result<impl IntoResponse, AppError> {
     let secret_key = std::env::var("SECRET_KEY").unwrap();
@@ -127,7 +125,6 @@ pub async fn login(
 
 pub async fn signup(
     State(pool): State<AppState>,
-    _: Session,
     Json(body): Json<SignupForm>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
@@ -194,4 +191,27 @@ pub async fn get_user_session(header: http::HeaderMap) -> Result<impl IntoRespon
     } else {
         Err(AppError::InternalServerError("Invalid token".to_string()))
     }
+}
+
+pub async fn logout() -> Result<impl IntoResponse, AppError> {
+    let cookie = CookieBuilder::new("Authorization", "".to_string())
+        .same_site(cookie::SameSite::None)
+        .secure(true)
+        .http_only(true)
+        .max_age(Duration::seconds(0))
+        .path("/")
+        .build()
+        .to_string();
+
+    let mut header_map = HeaderMap::new();
+    header_map.insert(header::SET_COOKIE, cookie.parse().unwrap());
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        header_map,
+        Json(json!({
+            "status": "LOGGED_OUT"
+        })),
+    ))
 }

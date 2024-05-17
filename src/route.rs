@@ -6,6 +6,7 @@ use axum::{
 };
 
 use crate::{
+    auth::logout,
     blog::{
         append_blog_node, create_blog, delete_blog, delete_blog_node, edit_blog, edit_blog_node,
         get_all_blog_nodes, get_all_blogs,
@@ -62,7 +63,8 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route(
             "/user/session",
             get(get_user_session).post(get_user_session),
-        );
+        )
+        .route("/logout", post(logout));
 
     let blog_routes = Router::new()
         .route("/create", post(create_blog))
