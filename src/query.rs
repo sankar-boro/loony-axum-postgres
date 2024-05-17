@@ -18,18 +18,8 @@ macro_rules! delete_wherein {
 }
 
 #[macro_export]
-macro_rules! delete_one {
-    ($table:expr, $condition:expr) => {
-        format!("DELETE FROM {} WHERE {}", $table, $condition)
-    };
-}
-
-#[macro_export]
-macro_rules! update_query {
-    ($table:expr, $set_column:expr, $where_column:expr) => {
-        format!(
-            "UPDATE {} SET {}=$1 WHERE {}=$2",
-            $table, $set_column, $where_column
-        )
+macro_rules! delete_where {
+    ($table:expr, $column:expr, $value:expr) => {
+        format!("DELETE FROM {} WHERE {}={}", $table, $column, $value)
     };
 }

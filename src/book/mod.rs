@@ -1,4 +1,4 @@
-use crate::delete_one;
+use crate::delete_where;
 use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
 use crate::AppState;
@@ -247,8 +247,8 @@ pub async fn delete_book(
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
 
-    let delete_books = delete_one!("books", format!("book_id={}", &body.book_id));
-    let delete_book = delete_one!("book", format!("book_id={}", &body.book_id));
+    let delete_books = delete_where!("books", "book_id", &body.book_id);
+    let delete_book = delete_where!("book", "book_id", &body.book_id);
     conn.batch_execute(&format!("{}; {}", &delete_books, &delete_book))
         .await?;
 
