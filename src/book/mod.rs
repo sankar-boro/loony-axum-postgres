@@ -1,7 +1,7 @@
-use crate::delete_where;
 use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
 use crate::AppState;
+use crate::{delete_nodes_query, delete_where, update_query};
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
@@ -263,11 +263,9 @@ pub async fn delete_book(
 
 #[derive(Deserialize, Serialize)]
 pub struct DeleteBookNode {
-    page_id: i32,
     identity: i16,
     delete_node_id: i32,
     update_parent_id: i32,
-    update_node_id: Option<i32>,
 }
 
 pub async fn test_query(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
@@ -328,26 +326,46 @@ pub async fn delete_book_node(
         }
     }
 
-    let _ = conn
-        .execute("DELETE FROM book WHERE uid=ANY($1)", &[&delete_row_ids])
-        .await?;
-    let _ = conn
-        .execute("DELETE FROM book WHERE uid=$1", &[&body.delete_node_id])
-        .await?;
-
-    let _ = conn
-        .execute(
-            "UPDATE book set parent_id=$1 WHERE uid=$2",
-            &[&body.update_parent_id, &body.update_node_id],
+    let u = conn
+        .query_opt(
+            "SELECT uid, parent_id from book where parent_id=$1 AND identity=$2",
+            &[&body.delete_node_id, &body.identity],
         )
         .await?;
+
+    let delete_nodes_query =
+        delete_nodes_query!("book", "uid", &delete_row_ids, &body.delete_node_id);
+    delete_row_ids.push(body.delete_node_id);
+
+    let mut return_me = json!({
+        "deleted_ids": delete_row_ids
+    });
+    if let Some(update_row) = u {
+        let update_id: i32 = update_row.get(0);
+
+        let update_node = update_query!(
+            "book",
+            "parent_id",
+            &body.update_parent_id,
+            "uid",
+            update_id
+        );
+        let thisquery = format!("{}; {};", &delete_nodes_query, &update_node);
+        println!("{}", thisquery);
+        conn.batch_execute(&thisquery).await?;
+        return_me = json!({
+            "update_id": update_id,
+            "deleted_ids": delete_row_ids,
+        });
+    } else {
+        conn.query_one(&delete_nodes_query, &[&delete_row_ids])
+            .await?;
+    }
 
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": "book deleted"
-        })),
+        Json(return_me),
     ))
 }
 
