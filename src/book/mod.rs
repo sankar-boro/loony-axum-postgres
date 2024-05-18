@@ -81,29 +81,28 @@ pub async fn edit_book(
     State(pool): State<AppState>,
     Json(body): Json<EditBook>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body
         .images
         .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
-    let row = conn
-        .query_one(
-            "UPDATE books SET title=$1, body=$2, $images=$3 WHERE book_id=$4",
-            &[&body.title, &body.body, &images, &body.book_id],
-        )
+    let rows1 = conn
+        .prepare("UPDATE books SET title=$1, body=$2, $images=$3 WHERE book_id=$4")
         .await?;
-
-    let book_id: i32 = row.get(0);
-
-    let _ = conn
-        .query_one(
-            "UPDATE book SET title=$1, body=$2, $images=$3 WHERE book_id=$4",
-            &[&body.title, &body.body, &images, &body.book_id],
-        )
+    let rows2 = conn
+        .prepare("UPDATE book SET title=$1, body=$2, $images=$3 WHERE book_id=$4")
         .await?;
+    let transaction = conn.transaction().await?;
+    transaction
+        .execute(&rows1, &[&body.title, &body.body, &images, &body.book_id])
+        .await?;
+    transaction
+        .execute(&rows2, &[&body.title, &body.body, &images, &body.book_id])
+        .await?;
+    transaction.commit().await?;
 
     let edit_book = json!({
-        "book_id": book_id,
+        "book_id": &body.book_id,
         "title": &body.title.clone(),
         "body": &body.body.clone(),
         "book_id": &body.book_id,
