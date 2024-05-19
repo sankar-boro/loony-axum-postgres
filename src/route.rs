@@ -16,7 +16,7 @@ use crate::{
 
 use crate::book::{
     append_book_node, create_book, delete_book, delete_book_node, edit_book, edit_book_node,
-    get_all_book_nodes, get_all_books,
+    get_all_books, get_book_chapters, get_book_sections, get_book_sub_sections,
 };
 use crate::file::{get_file, get_uploaded_file, upload_file};
 
@@ -84,7 +84,10 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/delete_book_node", post(delete_book_node))
         .route("/append_book_node", post(append_book_node))
         .route("/get_all_books", get(get_all_books))
-        .route("/get_all_book_nodes", get(get_all_book_nodes));
+        .route("/get_all_book_nodes", get(get_book_chapters))
+        .route("/get_book_chapters", get(get_book_chapters))
+        .route("/get_book_sections", get(get_book_sections))
+        .route("/get_book_sub_sections", get(get_book_sub_sections));
 
     Router::new()
         .nest("/api/auth", auth_routes)

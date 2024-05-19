@@ -26,14 +26,6 @@ pub struct EditBook {
     images: Vec<Images>,
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct GetBook {
-    book_id: i32,
-    title: String,
-    body: String,
-    images: String,
-}
-
 // @Create
 
 pub async fn create_book(
@@ -345,7 +337,7 @@ pub async fn delete_book_node(
         .prepare("UPDATE book SET parent_id=$1 WHERE uid=$2")
         .await?;
     let transaction = conn.transaction().await?;
-    transaction.execute(&state1, &[&delete_row_ids]).await?;
+    let r = transaction.execute(&state1, &[&delete_row_ids]).await?;
 
     let mut rupdate_id: Option<i32> = None;
     if let Some(update_row) = u {
@@ -363,6 +355,7 @@ pub async fn delete_book_node(
         Json(json!({
             "update_id": rupdate_id,
             "deleted_ids": delete_row_ids,
+            "deleted_rows": r
         })),
     ))
 }
@@ -371,20 +364,28 @@ pub async fn delete_book_node(
 
 // @Get
 
+#[derive(Deserialize, Serialize)]
+pub struct GetHomeBooks {
+    book_id: i32,
+    title: String,
+    body: String,
+    images: String,
+}
+
 pub async fn get_all_books(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query("SELECT book_id, title, body, images FROM books", &[])
         .await?;
 
-    let mut books: Vec<GetBook> = Vec::new();
+    let mut books: Vec<GetHomeBooks> = Vec::new();
 
     for (index, _) in rows.iter().enumerate() {
         let book_id: i32 = rows[index].get(0);
         let title: String = rows[index].get(1);
         let body: String = rows[index].get(2);
         let images: String = rows[index].get(3);
-        books.push(GetBook {
+        books.push(GetHomeBooks {
             book_id,
             title,
             body,
@@ -402,7 +403,7 @@ pub async fn get_all_books(State(pool): State<AppState>) -> Result<impl IntoResp
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct BookNode {
+pub struct ChaptersByBookId {
     uid: i32,
     parent_id: Option<i32>,
     title: String,
@@ -413,25 +414,25 @@ pub struct BookNode {
 }
 
 #[derive(Deserialize)]
-pub struct BookInfo {
+pub struct ChaptersByBookIdRequest {
     book_id: i32,
 }
 
-pub async fn get_all_book_nodes(
+pub async fn get_book_chapters(
     State(pool): State<AppState>,
-    query: Query<BookInfo>,
+    query: Query<ChaptersByBookIdRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let book_info: BookInfo = query.0;
+    let book_info: ChaptersByBookIdRequest = query.0;
 
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1",
+            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND identity<=101",
             &[&book_info.book_id],
         )
         .await?;
 
-    let mut books: Vec<BookNode> = Vec::new();
+    let mut books: Vec<ChaptersByBookId> = Vec::new();
 
     for (index, _) in rows.iter().enumerate() {
         let uid: i32 = rows[index].get(0);
@@ -441,7 +442,129 @@ pub async fn get_all_book_nodes(
         let images: Option<String> = rows[index].get(4);
         let identity: i16 = rows[index].get(5);
         let page_id: Option<i32> = rows[index].get(6);
-        books.push(BookNode {
+        books.push(ChaptersByBookId {
+            uid,
+            parent_id,
+            title,
+            body,
+            images,
+            identity,
+            page_id,
+        })
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "data": books
+        })),
+    ))
+}
+
+#[derive(Deserialize)]
+pub struct BookByPageId {
+    book_id: i32,
+    page_id: i32,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct BookNodesByPageId {
+    uid: i32,
+    parent_id: Option<i32>,
+    title: String,
+    body: String,
+    images: Option<String>,
+    identity: i16,
+    page_id: Option<i32>,
+}
+
+pub async fn get_book_sections(
+    State(pool): State<AppState>,
+    query: Query<BookByPageId>,
+) -> Result<impl IntoResponse, AppError> {
+    let book_info: BookByPageId = query.0;
+
+    let conn = pool.pg_pool.get().await?;
+    let rows = conn
+        .query(
+            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND page_id=$2 AND identity=102",
+            &[&book_info.book_id, &book_info.page_id],
+        )
+        .await?;
+
+    let mut books: Vec<BookNodesByPageId> = Vec::new();
+
+    for (index, _) in rows.iter().enumerate() {
+        let uid: i32 = rows[index].get(0);
+        let parent_id: Option<i32> = rows[index].get(1);
+        let title: String = rows[index].get(2);
+        let body: String = rows[index].get(3);
+        let images: Option<String> = rows[index].get(4);
+        let identity: i16 = rows[index].get(5);
+        let page_id: Option<i32> = rows[index].get(6);
+        books.push(BookNodesByPageId {
+            uid,
+            parent_id,
+            title,
+            body,
+            images,
+            identity,
+            page_id,
+        })
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "data": books
+        })),
+    ))
+}
+
+#[derive(Deserialize)]
+pub struct BookBySectionId {
+    book_id: i32,
+    page_id: i32,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct BookNodesBySectionId {
+    uid: i32,
+    parent_id: Option<i32>,
+    title: String,
+    body: String,
+    images: Option<String>,
+    identity: i16,
+    page_id: Option<i32>,
+}
+
+pub async fn get_book_sub_sections(
+    State(pool): State<AppState>,
+    query: Query<BookBySectionId>,
+) -> Result<impl IntoResponse, AppError> {
+    let book_info: BookBySectionId = query.0;
+
+    let conn = pool.pg_pool.get().await?;
+    let rows = conn
+        .query(
+            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND page_id=$2 AND identity=103",
+            &[&book_info.book_id, &book_info.page_id],
+        )
+        .await?;
+
+    let mut books: Vec<BookNodesBySectionId> = Vec::new();
+
+    for (index, _) in rows.iter().enumerate() {
+        let uid: i32 = rows[index].get(0);
+        let parent_id: Option<i32> = rows[index].get(1);
+        let title: String = rows[index].get(2);
+        let body: String = rows[index].get(3);
+        let images: Option<String> = rows[index].get(4);
+        let identity: i16 = rows[index].get(5);
+        let page_id: Option<i32> = rows[index].get(6);
+        books.push(BookNodesBySectionId {
             uid,
             parent_id,
             title,
