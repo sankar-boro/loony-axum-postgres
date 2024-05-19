@@ -1,7 +1,6 @@
 use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
 use crate::AppState;
-use crate::{delete_nodes_query, delete_where, update_query};
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
@@ -35,31 +34,43 @@ pub struct GetBook {
     images: String,
 }
 
+// @Create
+
 pub async fn create_book(
     State(pool): State<AppState>,
     Json(body): Json<CreateBook>,
 ) -> Result<impl IntoResponse, AppError> {
     let identity: i16 = 100;
-    let conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body
         .images
         .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
-    let row = conn
+
+    let state1 = conn
+        .prepare("INSERT INTO books(title, body, images, author_id) VALUES($1, $2, $3, $4) RETURNING book_id")
+        .await?;
+    let state2 = conn
+        .prepare("INSERT INTO book(book_id, title, identity, body, images) VALUES($1, $2, $3, $4, $5) RETURNING *")
+        .await?;
+    let transaction = conn.transaction().await?;
+
+    let row = transaction
         .query_one(
-            "INSERT INTO books(title, body, images, author_id) VALUES($1, $2, $3, $4) RETURNING book_id",
+            &state1,
             &[&body.title, &body.body, &images, &body.author_id],
         )
         .await?;
 
     let book_id: i32 = row.get(0);
 
-    let _ = conn
+    transaction
         .query_one(
-            "INSERT INTO book(book_id, title, identity, body, images) VALUES($1, $2, $3, $4, $5) RETURNING *",
+            &state2,
             &[&book_id, &body.title, &identity, &body.body, &images],
         )
         .await?;
+    transaction.commit().await?;
 
     let new_book = json!({
         "book_id": book_id,
@@ -77,6 +88,97 @@ pub async fn create_book(
     ))
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct AddBookNode {
+    book_id: i32,
+    title: String,
+    body: String,
+    images: Vec<Images>,
+    parent_id: i32,
+    page_id: Option<i32>,
+    identity: i16,
+}
+
+pub async fn append_book_node(
+    State(pool): State<AppState>,
+    Json(body): Json<AddBookNode>,
+) -> Result<impl IntoResponse, AppError> {
+    let mut conn = pool.pg_pool.get().await?;
+
+    let update_row = conn
+        .query_one(
+            "SELECT uid, parent_id, identity from book where parent_id=$1 AND identity=$2",
+            &[&body.parent_id, &body.identity],
+        )
+        .await;
+    let images = &serde_json::to_string(&body.images).unwrap();
+    let _ = &body
+        .images
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
+
+    let state1 = conn
+    .prepare(
+        "INSERT INTO book(book_id, page_id, parent_id, title, body, identity, images) values($1, $2, $3, $4, $5, $6, $7) returning uid",
+    )
+    .await?;
+    let state2 = conn
+        .prepare("UPDATE book SET parent_id=$1 where uid=$2 RETURNING uid")
+        .await?;
+
+    let transaction = conn.transaction().await?;
+    let res1 = transaction
+        .query_one(
+            &state1,
+            &[
+                &body.book_id,
+                &body.page_id,
+                &body.parent_id,
+                &body.title,
+                &body.body,
+                &body.identity,
+                &images,
+            ],
+        )
+        .await?;
+    let new_node_uid: i32 = res1.get(0);
+    let mut update_row_uid: Option<i32> = None;
+    if let Ok(update_row) = update_row {
+        if !update_row.is_empty() {
+            update_row_uid = update_row.get(0);
+            let identity: Option<i16> = update_row.get(2);
+            if &body.identity >= &identity.unwrap() {
+                transaction
+                    .execute(&state2, &[&new_node_uid, &update_row_uid])
+                    .await?;
+            }
+        }
+    }
+    transaction.commit().await?;
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "new_node": {
+                "uid": new_node_uid,
+                "parent_id": &body.parent_id,
+                "title": &body.title,
+                "body": &body.body,
+                "images": &images,
+                "identity": &body.identity,
+                "page_id": &body.page_id
+            },
+            "update_node": {
+                "update_row_id": update_row_uid,
+                "update_row_parent_id": new_node_uid
+            }
+        })),
+    ))
+}
+
+// @End Create
+
+// @Edit
 pub async fn edit_book(
     State(pool): State<AppState>,
     Json(body): Json<EditBook>,
@@ -86,18 +188,18 @@ pub async fn edit_book(
     let _ = &body
         .images
         .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
-    let rows1 = conn
+    let state1 = conn
         .prepare("UPDATE books SET title=$1, body=$2, $images=$3 WHERE book_id=$4")
         .await?;
-    let rows2 = conn
+    let state2 = conn
         .prepare("UPDATE book SET title=$1, body=$2, $images=$3 WHERE book_id=$4")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
-        .execute(&rows1, &[&body.title, &body.body, &images, &body.book_id])
+        .execute(&state1, &[&body.title, &body.body, &images, &body.book_id])
         .await?;
     transaction
-        .execute(&rows2, &[&body.title, &body.body, &images, &body.book_id])
+        .execute(&state2, &[&body.title, &body.body, &images, &body.book_id])
         .await?;
     transaction.commit().await?;
 
@@ -141,16 +243,6 @@ pub async fn edit_book_node(
             &[&body.title, &body.body, &images, &body.uid],
         )
         .await?;
-
-    if *&body.identity == 100 {
-        let _ = conn
-            .execute(
-                "UPDATE books SET title=$1, body=$2, images=$3 WHERE book_id=$4",
-                &[&body.title, &body.body, &images, &body.book_id],
-            )
-            .await?;
-    }
-
     let edit_book = json!({
         "title": &body.title.clone(),
         "body": &body.body.clone(),
@@ -164,76 +256,9 @@ pub async fn edit_book_node(
     ))
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct AddBookNode {
-    book_id: i32,
-    title: String,
-    body: String,
-    images: Vec<Images>,
-    parent_id: i32,
-    page_id: Option<i32>,
-    identity: i16,
-}
+// @End Edit
 
-pub async fn append_book_node(
-    State(pool): State<AppState>,
-    Json(body): Json<AddBookNode>,
-) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
-
-    let update_row = conn
-        .query_one(
-            "SELECT uid, parent_id, identity from book where parent_id=$1 AND identity=$2",
-            &[&body.parent_id, &body.identity],
-        )
-        .await;
-    let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body
-        .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
-    let new_node = conn
-    .query_one(
-            "INSERT INTO book(book_id, page_id, parent_id, title, body, identity, images) values($1, $2, $3, $4, $5, $6, $7) returning uid",
-            &[&body.book_id, &body.page_id, &body.parent_id, &body.title, &body.body, &body.identity, &images],
-        )
-        .await?;
-
-    let new_node_uid: i32 = new_node.get(0);
-    let mut update_row_uid: Option<i32> = None;
-    if let Ok(update_row) = update_row {
-        if !update_row.is_empty() {
-            update_row_uid = update_row.get(0);
-            let identity: Option<i16> = update_row.get(2);
-            if &body.identity >= &identity.unwrap() {
-                conn.query_one(
-                    "UPDATE book SET parent_id=$1 where uid=$2 RETURNING uid",
-                    &[&new_node_uid, &update_row_uid],
-                )
-                .await?;
-            }
-        }
-    }
-
-    Ok((
-        StatusCode::OK,
-        [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "new_node": {
-                "uid": new_node_uid,
-                "parent_id": &body.parent_id,
-                "title": &body.title,
-                "body": &body.body,
-                "images": &images,
-                "identity": &body.identity,
-                "page_id": &body.page_id
-            },
-            "update_node": {
-                "update_row_id": update_row_uid,
-                "update_row_parent_id": new_node_uid
-            }
-        })),
-    ))
-}
+// @Delete
 
 #[derive(Deserialize, Serialize)]
 pub struct DeleteBook {
@@ -244,12 +269,14 @@ pub async fn delete_book(
     State(pool): State<AppState>,
     Json(body): Json<DeleteBook>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.get().await?;
 
-    let delete_books = delete_where!("books", "book_id", &body.book_id);
-    let delete_book = delete_where!("book", "book_id", &body.book_id);
-    conn.batch_execute(&format!("{}; {}", &delete_books, &delete_book))
-        .await?;
+    let state1 = conn.prepare("DELETE FROM books WHERE book_id=$1").await?;
+    let state2 = conn.prepare("DELETE FROM book WHERE book_id=$1").await?;
+    let transaction = conn.transaction().await?;
+    transaction.execute(&state1, &[&body.book_id]).await?;
+    transaction.execute(&state2, &[&body.book_id]).await?;
+    transaction.commit().await?;
 
     Ok((
         StatusCode::OK,
@@ -267,34 +294,15 @@ pub struct DeleteBookNode {
     update_parent_id: i32,
 }
 
-pub async fn test_query(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
-    let page_ids: Vec<i32> = Vec::from([1, 2]);
-    let rows = conn
-        .query("SELECT uid FROM book where page_id = ANY($1)", &[&page_ids])
-        .await?;
-
-    for i in rows.iter() {
-        let uid: i32 = i.get(0);
-        println!("{}", uid);
-    }
-
-    Ok((
-        StatusCode::OK,
-        [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": "book deleted"
-        })),
-    ))
-}
-
 pub async fn delete_book_node(
     State(pool): State<AppState>,
     Json(body): Json<DeleteBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.get().await?;
 
+    // Prepare to find ids to delete
     let mut delete_row_ids: Vec<i32> = Vec::new();
+    delete_row_ids.push(body.delete_node_id);
     let delete_rows = conn
         .query(
             "SELECT uid FROM book where page_id=$1",
@@ -324,7 +332,7 @@ pub async fn delete_book_node(
             }
         }
     }
-
+    // Check if there is a node to update
     let u = conn
         .query_opt(
             "SELECT uid, parent_id from book where parent_id=$1 AND identity=$2",
@@ -332,41 +340,36 @@ pub async fn delete_book_node(
         )
         .await?;
 
-    let delete_nodes_query =
-        delete_nodes_query!("book", "uid", &delete_row_ids, &body.delete_node_id);
-    delete_row_ids.push(body.delete_node_id);
+    let state1 = conn.prepare("DELETE FROM book WHERE uid=ANY($1)").await?;
+    let state2 = conn
+        .prepare("UPDATE book SET parent_id=$1 WHERE uid=$2")
+        .await?;
+    let transaction = conn.transaction().await?;
+    transaction.execute(&state1, &[&delete_row_ids]).await?;
 
-    let mut return_me = json!({
-        "deleted_ids": delete_row_ids
-    });
+    let mut rupdate_id: Option<i32> = None;
     if let Some(update_row) = u {
         let update_id: i32 = update_row.get(0);
-
-        let update_node = update_query!(
-            "book",
-            "parent_id",
-            &body.update_parent_id,
-            "uid",
-            update_id
-        );
-        let thisquery = format!("{}; {};", &delete_nodes_query, &update_node);
-        println!("{}", thisquery);
-        conn.batch_execute(&thisquery).await?;
-        return_me = json!({
-            "update_id": update_id,
-            "deleted_ids": delete_row_ids,
-        });
-    } else {
-        conn.query_one(&delete_nodes_query, &[&delete_row_ids])
+        transaction
+            .execute(&state2, &[&body.update_parent_id, &update_id])
             .await?;
+        rupdate_id = Some(update_id);
     }
+    transaction.commit().await?;
 
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(return_me),
+        Json(json!({
+            "update_id": rupdate_id,
+            "deleted_ids": delete_row_ids,
+        })),
     ))
 }
+
+// @End Delete
+
+// @Get
 
 pub async fn get_all_books(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
@@ -454,6 +457,29 @@ pub async fn get_all_book_nodes(
         [(header::CONTENT_TYPE, "application/json")],
         Json(json!({
             "data": books
+        })),
+    ))
+}
+
+// @End Get
+
+pub async fn test_query(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
+    let page_ids: Vec<i32> = Vec::from([1, 2]);
+    let rows = conn
+        .query("SELECT uid FROM book where page_id = ANY($1)", &[&page_ids])
+        .await?;
+
+    for i in rows.iter() {
+        let uid: i32 = i.get(0);
+        println!("{}", uid);
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "data": "book deleted"
         })),
     ))
 }
