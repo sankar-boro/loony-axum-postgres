@@ -178,6 +178,7 @@ pub async fn append_blog_node(
                 .await?;
         }
     }
+    transaction.commit().await?;
 
     Ok((
         StatusCode::OK,
@@ -388,6 +389,7 @@ pub async fn edit_blog_node(
             .execute(&state2, &[&body.title, &body.body, &body.blog_id])
             .await?;
     }
+    transaction.commit().await?;
 
     let edit_blog = json!({
         "status": 200,
