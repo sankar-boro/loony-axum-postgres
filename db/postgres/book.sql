@@ -6,7 +6,8 @@ CREATE TABLE books (
     images TEXT,
     metadata TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
 );
 CREATE TABLE book (
     uid serial PRIMARY KEY NOT NULL,
@@ -19,7 +20,8 @@ CREATE TABLE book (
     identity smallINT,
     metadata TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
 );
 
 CREATE INDEX idx_book_page_id ON book(book_id, page_id);

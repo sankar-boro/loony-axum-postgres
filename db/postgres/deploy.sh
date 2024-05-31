@@ -1,11 +1,11 @@
 #!/bin/bash
 
 PWD=$(pwd)
-dropfile=$PWD/lily_setup/postgres/drop.sql
+dropfile=$PWD/db/postgres/drop.sql
 
-blog=$PWD/lily_setup/postgres/blog.sql
-book=$PWD/lily_setup/postgres/book.sql
-user=$PWD/lily_setup/postgres/user.sql
+blog=$PWD/db/postgres/blog.sql
+book=$PWD/db/postgres/book.sql
+user=$PWD/db/postgres/user.sql
 
 psql -h localhost -U sankar -d sankar \
 -f $blog \
