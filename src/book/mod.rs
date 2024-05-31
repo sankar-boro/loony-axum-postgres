@@ -391,7 +391,10 @@ pub struct GetHomeBooks {
 pub async fn get_all_books(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
     let rows = conn
-        .query("SELECT book_id, title, body, images FROM books", &[])
+        .query(
+            "SELECT book_id, title, body, images FROM books where deleted_at is NULL",
+            &[],
+        )
         .await?;
 
     let mut books: Vec<GetHomeBooks> = Vec::new();
@@ -443,7 +446,7 @@ pub async fn get_book_chapters(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND identity<=101",
+            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND identity<=101 AND deleted_at is null",
             &[&book_info.book_id],
         )
         .await?;
@@ -504,7 +507,7 @@ pub async fn get_book_sections(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND page_id=$2 AND identity=102",
+            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND page_id=$2 AND identity=102 and deleted_at is null",
             &[&book_info.book_id, &book_info.page_id],
         )
         .await?;
@@ -565,7 +568,7 @@ pub async fn get_book_sub_sections(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND page_id=$2 AND identity=103",
+            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND page_id=$2 AND identity=103 and deleted_at is null",
             &[&book_info.book_id, &book_info.page_id],
         )
         .await?;
