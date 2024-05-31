@@ -58,7 +58,7 @@ pub async fn create_book(
     let book_id: i32 = row.get(0);
 
     transaction
-        .query_one(
+        .execute(
             &state2,
             &[&book_id, &body.title, &identity, &body.body, &images],
         )
@@ -98,16 +98,17 @@ pub async fn append_book_node(
 ) -> Result<impl IntoResponse, AppError> {
     let mut conn = pool.pg_pool.get().await?;
 
+    let images = &serde_json::to_string(&body.images).unwrap();
+    let _ = &body
+        .images
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
+
     let update_row = conn
         .query_one(
             "SELECT uid, parent_id, identity from book where parent_id=$1 AND identity=$2",
             &[&body.parent_id, &body.identity],
         )
         .await;
-    let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body
-        .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
 
     let state1 = conn
     .prepare(
