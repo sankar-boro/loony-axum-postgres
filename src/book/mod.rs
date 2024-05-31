@@ -7,6 +7,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use chrono::Local;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -264,12 +265,21 @@ pub async fn delete_book(
     Json(body): Json<DeleteBook>,
 ) -> Result<impl IntoResponse, AppError> {
     let mut conn = pool.pg_pool.get().await?;
+    let current_time = Local::now();
 
-    let state1 = conn.prepare("DELETE FROM books WHERE book_id=$1").await?;
-    let state2 = conn.prepare("DELETE FROM book WHERE book_id=$1").await?;
+    let state1 = conn
+        .prepare("UPDATE book SET deleted_at=$1 WHERE book_id=$2")
+        .await?;
+    let state2 = conn
+        .prepare("UPDATE books SET deleted_at=$1 WHERE book_id=$2")
+        .await?;
     let transaction = conn.transaction().await?;
-    transaction.execute(&state1, &[&body.book_id]).await?;
-    transaction.execute(&state2, &[&body.book_id]).await?;
+    transaction
+        .execute(&state1, &[&current_time, &body.book_id])
+        .await?;
+    transaction
+        .execute(&state2, &[&current_time, &body.book_id])
+        .await?;
     transaction.commit().await?;
 
     Ok((
@@ -333,13 +343,17 @@ pub async fn delete_book_node(
             &[&body.delete_node_id, &body.identity],
         )
         .await?;
-
-    let state1 = conn.prepare("DELETE FROM book WHERE uid=ANY($1)").await?;
+    let current_time = Local::now();
+    let state1 = conn
+        .prepare("UPDATE book set deleted_at=$1 WHERE uid=ANY($2)")
+        .await?;
     let state2 = conn
         .prepare("UPDATE book SET parent_id=$1 WHERE uid=$2")
         .await?;
     let transaction = conn.transaction().await?;
-    let r = transaction.execute(&state1, &[&delete_row_ids]).await?;
+    let r = transaction
+        .execute(&state1, &[&current_time, &delete_row_ids])
+        .await?;
 
     let mut rupdate_id: Option<i32> = None;
     if let Some(update_row) = u {

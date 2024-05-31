@@ -56,11 +56,17 @@ pub async fn login(
 
     let conn = pool.pg_pool.get().await?;
     let row = conn
-        .query_one(
+        .query_opt(
             "select user_id, fname, lname, password from users where username=$1",
             &[&body.username],
         )
         .await?;
+
+    if row.is_none() {
+        return Err(AppError::InternalServerError("User not found".to_string()));
+    }
+
+    let row = row.unwrap();
 
     let user_id: i32 = row.get(0);
     let fname: String = row.get(1);
@@ -128,6 +134,17 @@ pub async fn signup(
     Json(body): Json<SignupForm>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
+
+    let row = conn
+        .query_opt(
+            "select username from users where username=$1",
+            &[&body.username],
+        )
+        .await?;
+
+    if row.is_some() {
+        return Err(AppError::InternalServerError("User exists".to_string()));
+    }
 
     let hashed_password = hash(&body.password, DEFAULT_COST)?;
     let _ = conn
