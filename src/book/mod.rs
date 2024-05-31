@@ -236,9 +236,11 @@ pub async fn edit_book_node(
         )
         .await?;
     let edit_book = json!({
-        "title": &body.title.clone(),
-        "body": &body.body.clone(),
-        "images": &images,
+        "data": {
+            "title": &body.title.clone(),
+            "body": &body.body.clone(),
+            "images": &images,
+        }
     });
 
     Ok((
