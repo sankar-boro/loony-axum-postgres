@@ -4,6 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use bcrypt::BcryptError;
+use image::ImageError;
 
 pub enum AppError {
     // NotFound(String),
@@ -41,6 +42,11 @@ impl From<BcryptError> for AppError {
 }
 impl From<MultipartError> for AppError {
     fn from(err: MultipartError) -> Self {
+        AppError::InternalServerError(err.to_string())
+    }
+}
+impl From<ImageError> for AppError {
+    fn from(err: ImageError) -> Self {
         AppError::InternalServerError(err.to_string())
     }
 }
