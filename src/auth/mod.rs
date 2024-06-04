@@ -15,6 +15,7 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use time::Duration;
+use tower_sessions::Session;
 
 #[derive(Deserialize, Debug)]
 pub struct LoginForm {
@@ -49,6 +50,7 @@ struct Claims {
 }
 
 pub async fn login(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<LoginForm>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -120,6 +122,10 @@ pub async fn login(
 
     let mut header_map = HeaderMap::new();
     header_map.insert(header::SET_COOKIE, cookie.parse().unwrap());
+    session
+        .insert("AUTH_USER", &serde_json::to_string(&user_response).unwrap())
+        .await?;
+    session.insert("AUTH_USER_ID", user_id).await?;
 
     Ok((
         StatusCode::OK,
@@ -130,10 +136,10 @@ pub async fn login(
 }
 
 pub async fn signup(
-    State(pool): State<AppState>,
+    State(state): State<AppState>,
     Json(body): Json<SignupForm>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = state.pg_pool.get().await?;
 
     let row = conn
         .query_opt(
@@ -147,12 +153,18 @@ pub async fn signup(
     }
 
     let hashed_password = hash(&body.password, DEFAULT_COST)?;
-    let _ = conn
-        .query(
-            "INSERT INTO users(username, password, fname, lname) values($1, $2, $3, $4)",
+    let row = conn
+        .query_one(
+            "INSERT INTO users(username, password, fname, lname) values($1, $2, $3, $4) RETURNING user_id",
             &[&body.username, &hashed_password, &body.fname, &body.lname],
         )
         .await?;
+
+    let user_id: i32 = row.get(0);
+    std::fs::create_dir(format!("{}/{}", &state.dirs.file_upload, &user_id))?;
+    std::fs::create_dir(format!("{}/{}/sm", &state.dirs.file_upload, &user_id))?;
+    std::fs::create_dir(format!("{}/{}/md", &state.dirs.file_upload, &user_id))?;
+    std::fs::create_dir(format!("{}/{}/lg", &state.dirs.file_upload, &user_id))?;
 
     let user_response = json!({
         "username": &body.username.clone(),

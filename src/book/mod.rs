@@ -10,13 +10,14 @@ use axum::{
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 pub struct CreateBook {
     title: String,
     body: String,
     images: Vec<Images>,
-    author_id: i32,
+    user_id: i32,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -30,29 +31,38 @@ pub struct EditBook {
 // @Create
 
 pub async fn create_book(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<CreateBook>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id: i32 = match session.get("AUTH_USER_ID").await {
+        Ok(x) => match x {
+            Some(x) => x,
+            None => {
+                return Err(AppError::InternalServerError(
+                    "User session not found".to_string(),
+                ))
+            }
+        },
+        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
+    };
     let identity: i16 = 100;
     let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body
         .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload, user_id);
 
     let state1 = conn
-        .prepare("INSERT INTO books(title, body, images, author_id) VALUES($1, $2, $3, $4) RETURNING book_id")
+        .prepare("INSERT INTO books(title, body, images, user_id) VALUES($1, $2, $3, $4) RETURNING book_id")
         .await?;
     let state2 = conn
-        .prepare("INSERT INTO book(book_id, title, identity, body, images) VALUES($1, $2, $3, $4, $5) RETURNING *")
+        .prepare("INSERT INTO book(book_id, title, identity, body, images, user_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING *")
         .await?;
     let transaction = conn.transaction().await?;
 
     let row = transaction
-        .query_one(
-            &state1,
-            &[&body.title, &body.body, &images, &body.author_id],
-        )
+        .query_one(&state1, &[&body.title, &body.body, &images, &body.user_id])
         .await?;
 
     let book_id: i32 = row.get(0);
@@ -60,7 +70,14 @@ pub async fn create_book(
     transaction
         .execute(
             &state2,
-            &[&book_id, &body.title, &identity, &body.body, &images],
+            &[
+                &book_id,
+                &body.title,
+                &identity,
+                &body.body,
+                &images,
+                &body.user_id,
+            ],
         )
         .await?;
     transaction.commit().await?;
@@ -71,7 +88,7 @@ pub async fn create_book(
         "body": &body.body.clone(),
         "identity": &identity,
         "images": &images,
-        "author_id": &body.author_id,
+        "user_id": &body.user_id,
     });
 
     Ok((
@@ -93,15 +110,27 @@ pub struct AddBookNode {
 }
 
 pub async fn append_book_node(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<AddBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id: i32 = match session.get("AUTH_USER_ID").await {
+        Ok(x) => match x {
+            Some(x) => x,
+            None => {
+                return Err(AppError::InternalServerError(
+                    "User session not found".to_string(),
+                ))
+            }
+        },
+        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
+    };
     let mut conn = pool.pg_pool.get().await?;
 
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body
         .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload, user_id);
 
     let update_row = conn
         .query_one(
@@ -174,14 +203,26 @@ pub async fn append_book_node(
 
 // @Edit
 pub async fn edit_book(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<EditBook>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id: i32 = match session.get("AUTH_USER_ID").await {
+        Ok(x) => match x {
+            Some(x) => x,
+            None => {
+                return Err(AppError::InternalServerError(
+                    "User session not found".to_string(),
+                ))
+            }
+        },
+        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
+    };
     let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body
         .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload, user_id);
     let state1 = conn
         .prepare("UPDATE books SET title=$1, body=$2, $images=$3 WHERE book_id=$4")
         .await?;
@@ -223,14 +264,26 @@ pub struct EditBookNode {
 }
 
 pub async fn edit_book_node(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<EditBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id: i32 = match session.get("AUTH_USER_ID").await {
+        Ok(x) => match x {
+            Some(x) => x,
+            None => {
+                return Err(AppError::InternalServerError(
+                    "User session not found".to_string(),
+                ))
+            }
+        },
+        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
+    };
     let conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body
         .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload, user_id);
     let _ = conn
         .execute(
             "UPDATE book SET title=$1, body=$2, images=$3 WHERE uid=$4",

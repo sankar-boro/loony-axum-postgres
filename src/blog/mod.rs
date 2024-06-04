@@ -10,13 +10,14 @@ use axum::{
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 pub struct CreateBlog {
     title: String,
     body: String,
     images: Vec<Images>,
-    author_id: i32,
+    user_id: i32,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -36,21 +37,30 @@ pub struct GetBlog {
 }
 
 pub async fn create_blog(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<CreateBlog>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id: i32 = match session.get("AUTH_USER_ID").await {
+        Ok(x) => match x {
+            Some(x) => x,
+            None => {
+                return Err(AppError::InternalServerError(
+                    "User session not found".to_string(),
+                ))
+            }
+        },
+        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
+    };
     let mut conn = pool.pg_pool.get().await?;
-    let _ = &body
-        .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body
         .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload);
+        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload, user_id);
 
     let state1 = conn
         .prepare(
-            "INSERT INTO blogs(title, body, images, author_id) VALUES($1, $2, $3, $4) RETURNING blog_id"
+            "INSERT INTO blogs(title, body, images, user_id) VALUES($1, $2, $3, $4) RETURNING blog_id"
         )
         .await?;
     let state2 = conn
@@ -61,10 +71,7 @@ pub async fn create_blog(
 
     let transaction = conn.transaction().await?;
     let row = transaction
-        .query_one(
-            &state1,
-            &[&body.title, &body.body, &images, &body.author_id],
-        )
+        .query_one(&state1, &[&body.title, &body.body, &images, &body.user_id])
         .await?;
     let blog_id: i32 = row.get(0);
     transaction
@@ -80,7 +87,7 @@ pub async fn create_blog(
             "title": &body.title.clone(),
             "body": &body.body.clone(),
             "images": &images,
-            "author_id": &body.author_id,
+            "user_id": &body.user_id,
         })),
     ))
 }

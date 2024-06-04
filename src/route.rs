@@ -55,7 +55,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
     let session_store = RedisStore::new(pool);
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)
-        .with_expiry(Expiry::OnInactivity(Duration::seconds(30)));
+        .with_expiry(Expiry::OnInactivity(Duration::days(3)));
 
     let auth_routes = Router::new()
         .route("/login", get(login).post(login))
@@ -94,8 +94,8 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .nest("/api/blog", blog_routes)
         .nest("/api/book", book_routes)
         .route("/api/upload_file", post(upload_file))
-        .route("/api/i/:filename", get(get_file))
-        .route("/api/u/:filename", get(get_uploaded_file))
+        .route("/api/i/:user_id/:size/:filename", get(get_file))
+        .route("/api/u/:user_id/:size/:filename", get(get_uploaded_file))
         .route("/", get(home))
         .route("/test_query", get(test_query))
         .with_state(connection)

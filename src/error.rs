@@ -50,7 +50,11 @@ impl From<ImageError> for AppError {
         AppError::InternalServerError(err.to_string())
     }
 }
-
+impl From<tower_sessions::session::Error> for AppError {
+    fn from(err: tower_sessions::session::Error) -> Self {
+        AppError::InternalServerError(err.to_string())
+    }
+}
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let body = match self {

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::io::Cursor;
 use std::path::Path;
+use tower_sessions::Session;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
@@ -32,11 +33,14 @@ struct ImageMetadata {
     oriImgMd: OriImgMd,
     cropImgMd: CropImgMd,
 }
+
 // Doesn't support image upload size greater then 2mb
 pub async fn upload_file(
+    session: Session,
     State(state): State<AppState>,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id: u32 = session.get("AUTH_USER_ID").await?.unwrap();
     if let Some(metadata_field) = multipart.next_field().await? {
         let metadata_bytes = metadata_field.bytes().await?;
         let metadata_str = std::str::from_utf8(&metadata_bytes).unwrap();
@@ -56,18 +60,23 @@ pub async fn upload_file(
             let dynamic_image = image::load(cursor, format.unwrap())?;
 
             let this_uuid = Uuid::new_v4().to_string();
+            let tmp_upload_path = &format!("{}/{}", &state.dirs.file_upload_tmp, &user_id);
+            if !Path::new(tmp_upload_path).is_dir() {
+                std::fs::create_dir(tmp_upload_path)?;
+            }
 
+            let filename = format!("{}.{}", &this_uuid, &extension);
             let lg_fpath = format!(
-                "{}/{}_lg.{}",
-                &state.dirs.file_upload_tmp, &this_uuid, &extension
+                "{}/{}/lg_{}",
+                &state.dirs.file_upload_tmp, &user_id, &filename
             );
             let md_fpath = format!(
-                "{}/{}_md.{}",
-                &state.dirs.file_upload_tmp, &this_uuid, &extension
+                "{}/{}/md_{}",
+                &state.dirs.file_upload_tmp, &user_id, &filename
             );
             let sm_fpath = format!(
-                "{}/{}_sm.{}",
-                &state.dirs.file_upload_tmp, &this_uuid, &extension
+                "{}/{}/sm_{}",
+                &state.dirs.file_upload_tmp, &user_id, &filename
             );
 
             let cropped_img_lg = dynamic_image.crop_imm(
@@ -96,7 +105,7 @@ pub async fn upload_file(
                 [(header::CONTENT_TYPE, "application/json")],
                 Json(json!({
                     "data": {
-                        "name": this_uuid
+                        "name": filename
                     }
                 })),
             ));
@@ -115,10 +124,13 @@ pub async fn upload_file(
 
 pub async fn get_file(
     State(state): State<AppState>,
-    AxumPath(filename): AxumPath<String>,
+    AxumPath((user_id, size, filename)): AxumPath<(i32, String, String)>,
 ) -> Result<impl IntoResponse, AppError> {
     // Assuming files are stored in a directory named 'files'
-    let file_path = format!("{}/{}", &state.dirs.file_upload, filename);
+    let file_path = format!(
+        "{}/{}/{}/{}",
+        &state.dirs.file_upload, user_id, size, filename
+    );
 
     // Attempt to read the file contents
     let f = std::fs::read(&file_path)?;
@@ -132,11 +144,13 @@ pub async fn get_file(
 
 pub async fn get_uploaded_file(
     State(state): State<AppState>,
-    AxumPath(filename): AxumPath<String>,
+    AxumPath((user_id, size, filename)): AxumPath<(i32, String, String)>,
 ) -> Result<impl IntoResponse, AppError> {
     // Assuming files are stored in a directory named 'files'
-    let file_path = format!("{}/{}", &state.dirs.file_upload_tmp, filename);
-
+    let file_path = format!(
+        "{}/{}/{}/{}",
+        &state.dirs.file_upload, user_id, size, filename
+    );
     // Attempt to read the file contents
     let f = std::fs::read(&file_path)?;
 
