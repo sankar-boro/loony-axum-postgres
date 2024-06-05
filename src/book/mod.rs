@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
+use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
     extract::{Query, State},
@@ -17,7 +18,6 @@ pub struct CreateBook {
     title: String,
     body: String,
     images: Vec<Images>,
-    user_id: i32,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -35,18 +35,7 @@ pub async fn create_book(
     State(pool): State<AppState>,
     Json(body): Json<CreateBook>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id: i32 = match session.get("AUTH_USER_ID").await {
-        Ok(x) => match x {
-            Some(x) => x,
-            None => {
-                return Err(AppError::InternalServerError(
-                    "User session not found".to_string(),
-                ))
-            }
-        },
-        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
-    };
-
+    let user_id = session.get_user_id().await?;
     let identity: i16 = 100;
     let images = &serde_json::to_string(&body.images).unwrap();
 
@@ -61,7 +50,7 @@ pub async fn create_book(
     let transaction = conn.transaction().await?;
 
     let row = transaction
-        .query_one(&state1, &[&body.title, &body.body, &images, &body.user_id])
+        .query_one(&state1, &[&body.title, &body.body, &images, &user_id])
         .await?;
 
     let book_id: i32 = row.get(0);
@@ -82,7 +71,7 @@ pub async fn create_book(
                 &identity,
                 &body.body,
                 &images,
-                &body.user_id,
+                &user_id,
             ],
         )
         .await?;
@@ -94,7 +83,7 @@ pub async fn create_book(
         "body": &body.body.clone(),
         "identity": &identity,
         "images": &images,
-        "user_id": &body.user_id,
+        "user_id": &user_id,
     });
 
     Ok((
@@ -120,17 +109,7 @@ pub async fn append_book_node(
     State(pool): State<AppState>,
     Json(body): Json<AddBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id: i32 = match session.get("AUTH_USER_ID").await {
-        Ok(x) => match x {
-            Some(x) => x,
-            None => {
-                return Err(AppError::InternalServerError(
-                    "User session not found".to_string(),
-                ))
-            }
-        },
-        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
-    };
+    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.get().await?;
 
     let images = &serde_json::to_string(&body.images).unwrap();

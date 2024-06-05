@@ -112,9 +112,7 @@ pub async fn upload_file(
                 StatusCode::OK,
                 [(header::CONTENT_TYPE, "application/json")],
                 Json(json!({
-                    "data": {
-                        "name": filename
-                    }
+                    "name": filename
                 })),
             ));
         }
@@ -132,12 +130,12 @@ pub async fn upload_file(
 
 pub async fn get_file(
     State(state): State<AppState>,
-    AxumPath((user_id, size, filename)): AxumPath<(i32, String, String)>,
+    AxumPath((project_id, size, filename)): AxumPath<(i32, String, String)>,
 ) -> Result<impl IntoResponse, AppError> {
     // Assuming files are stored in a directory named 'files'
     let file_path = format!(
         "{}/{}/{}/{}",
-        &state.dirs.file_upload, user_id, size, filename
+        &state.dirs.file_upload, project_id, size, filename
     );
 
     // Attempt to read the file contents

@@ -7,6 +7,7 @@ mod file;
 mod query;
 mod route;
 mod traits;
+mod utils;
 
 use axum::http::{
     header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
