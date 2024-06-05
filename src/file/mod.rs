@@ -34,18 +34,39 @@ struct ImageMetadata {
     cropImgMd: CropImgMd,
 }
 
+async fn create_tmp_path(
+    state: &AppState,
+    session: &Session,
+    extension: &str,
+) -> Result<(String, String, String, String, u32), AppError> {
+    let unique_uuid = Uuid::new_v4().to_string();
+    let user_id: u32 = session.get("AUTH_USER_ID").await?.unwrap();
+    let filename = format!("{}.{}", &unique_uuid, extension);
+    let lg_fpath = format!(
+        "{}/{}/lg_{}",
+        &state.dirs.file_upload_tmp, &user_id, &filename
+    );
+    let md_fpath = format!(
+        "{}/{}/md_{}",
+        &state.dirs.file_upload_tmp, &user_id, &filename
+    );
+    let sm_fpath = format!(
+        "{}/{}/sm_{}",
+        &state.dirs.file_upload_tmp, &user_id, &filename
+    );
+    Ok((filename, lg_fpath, md_fpath, sm_fpath, user_id))
+}
+
 // Doesn't support image upload size greater then 2mb
 pub async fn upload_file(
     session: Session,
     State(state): State<AppState>,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id: u32 = session.get("AUTH_USER_ID").await?.unwrap();
     if let Some(metadata_field) = multipart.next_field().await? {
         let metadata_bytes = metadata_field.bytes().await?;
         let metadata_str = std::str::from_utf8(&metadata_bytes).unwrap();
         let img_metadata: ImageMetadata = serde_json::from_str(&metadata_str).unwrap();
-
         if let Some(img_field) = multipart.next_field().await? {
             let filename = &img_field.file_name().unwrap().to_string();
             let img_bytes = &img_field.bytes().await?;
@@ -55,29 +76,16 @@ pub async fn upload_file(
                 .extension()
                 .and_then(|ext| ext.to_str())
                 .unwrap();
+            let (filename, lg_fpath, md_fpath, sm_fpath, user_id) =
+                create_tmp_path(&state, &session, extension).await?;
             let format = ImageFormat::from_extension(extension);
             let cursor = Cursor::new(&img_bytes);
             let dynamic_image = image::load(cursor, format.unwrap())?;
 
-            let this_uuid = Uuid::new_v4().to_string();
             let tmp_upload_path = &format!("{}/{}", &state.dirs.file_upload_tmp, &user_id);
             if !Path::new(tmp_upload_path).is_dir() {
                 std::fs::create_dir(tmp_upload_path)?;
             }
-
-            let filename = format!("{}.{}", &this_uuid, &extension);
-            let lg_fpath = format!(
-                "{}/{}/lg_{}",
-                &state.dirs.file_upload_tmp, &user_id, &filename
-            );
-            let md_fpath = format!(
-                "{}/{}/md_{}",
-                &state.dirs.file_upload_tmp, &user_id, &filename
-            );
-            let sm_fpath = format!(
-                "{}/{}/sm_{}",
-                &state.dirs.file_upload_tmp, &user_id, &filename
-            );
 
             let cropped_img_lg = dynamic_image.crop_imm(
                 img_metadata.cropImgMd.x,

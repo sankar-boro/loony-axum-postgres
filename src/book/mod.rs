@@ -46,12 +46,11 @@ pub async fn create_book(
         },
         Err(e) => return Err(AppError::InternalServerError(e.to_string())),
     };
+
     let identity: i16 = 100;
-    let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body
-        .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload, user_id);
+
+    let mut conn = pool.pg_pool.get().await?;
 
     let state1 = conn
         .prepare("INSERT INTO books(title, body, images, user_id) VALUES($1, $2, $3, $4) RETURNING book_id")
@@ -66,6 +65,13 @@ pub async fn create_book(
         .await?;
 
     let book_id: i32 = row.get(0);
+
+    let _ = &body.images.move_images(
+        &pool.dirs.file_upload_tmp,
+        &pool.dirs.file_upload,
+        user_id,
+        book_id,
+    );
 
     transaction
         .execute(
@@ -128,9 +134,12 @@ pub async fn append_book_node(
     let mut conn = pool.pg_pool.get().await?;
 
     let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body
-        .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload, user_id);
+    let _ = &body.images.move_images(
+        &pool.dirs.file_upload_tmp,
+        &pool.dirs.file_upload,
+        user_id,
+        body.book_id,
+    );
 
     let update_row = conn
         .query_one(
@@ -220,9 +229,12 @@ pub async fn edit_book(
     };
     let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body
-        .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload, user_id);
+    let _ = &body.images.move_images(
+        &pool.dirs.file_upload_tmp,
+        &pool.dirs.file_upload,
+        user_id,
+        body.book_id,
+    );
     let state1 = conn
         .prepare("UPDATE books SET title=$1, body=$2, $images=$3 WHERE book_id=$4")
         .await?;
@@ -281,9 +293,12 @@ pub async fn edit_book_node(
     };
     let conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body
-        .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload, user_id);
+    let _ = &body.images.move_images(
+        &pool.dirs.file_upload_tmp,
+        &pool.dirs.file_upload,
+        user_id,
+        body.book_id,
+    );
     let _ = conn
         .execute(
             "UPDATE book SET title=$1, body=$2, images=$3 WHERE uid=$4",

@@ -54,9 +54,6 @@ pub async fn create_blog(
     };
     let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body
-        .images
-        .move_images(&pool.dirs.file_upload_tmp, &pool.dirs.file_upload, user_id);
 
     let state1 = conn
         .prepare(
@@ -78,6 +75,13 @@ pub async fn create_blog(
         .execute(&state2, &[&blog_id, &body.title, &body.body, &images])
         .await?;
     transaction.commit().await?;
+
+    let _ = &body.images.move_images(
+        &pool.dirs.file_upload_tmp,
+        &pool.dirs.file_upload,
+        user_id,
+        blog_id,
+    );
 
     Ok((
         StatusCode::OK,
@@ -137,9 +141,21 @@ pub struct AddBlogNode {
 }
 
 pub async fn append_blog_node(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<AddBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id: i32 = match session.get("AUTH_USER_ID").await {
+        Ok(x) => match x {
+            Some(x) => x,
+            None => {
+                return Err(AppError::InternalServerError(
+                    "User session not found".to_string(),
+                ))
+            }
+        },
+        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
+    };
     let mut conn = pool.pg_pool.get().await?;
 
     let update_row = conn
@@ -186,6 +202,13 @@ pub async fn append_blog_node(
         }
     }
     transaction.commit().await?;
+
+    let _ = &body.images.move_images(
+        &pool.dirs.file_upload_tmp,
+        &pool.dirs.file_upload,
+        user_id,
+        body.blog_id,
+    );
 
     Ok((
         StatusCode::OK,
