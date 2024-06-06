@@ -13,5 +13,6 @@ PG_PASSWORD=sankar \
 ALLOW_ORIGIN=http://localhost:3000 \
 SECRET_KEY=lorem_ipsum_dolor_isset \
 FILE_UPLOADS_TMP=/home/sankar/.tmp_uploads \
-FILE_UPLOADS=/home/sankar/.uploads \
+FILE_UPLOADS_DOC=/home/sankar/.doc_uploads \
+FILE_UPLOADS_USER=/home/sankar/.user_uploads \
 ./target/release/loony

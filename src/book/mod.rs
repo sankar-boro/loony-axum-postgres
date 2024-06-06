@@ -57,7 +57,7 @@ pub async fn create_book(
 
     let _ = &body.images.move_images(
         &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload,
+        &pool.dirs.file_upload_doc,
         user_id,
         book_id,
     );
@@ -115,7 +115,7 @@ pub async fn append_book_node(
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body.images.move_images(
         &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload,
+        &pool.dirs.file_upload_doc,
         user_id,
         body.book_id,
     );
@@ -210,7 +210,7 @@ pub async fn edit_book(
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body.images.move_images(
         &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload,
+        &pool.dirs.file_upload_doc,
         user_id,
         body.book_id,
     );
@@ -274,7 +274,7 @@ pub async fn edit_book_node(
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body.images.move_images(
         &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload,
+        &pool.dirs.file_upload_doc,
         user_id,
         body.book_id,
     );

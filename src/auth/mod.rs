@@ -13,7 +13,7 @@ use chrono::{Duration as ChronoDuration, Local};
 use cookie::{Cookie, CookieBuilder};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use time::Duration;
 use tower_sessions::Session;
 
@@ -153,18 +153,12 @@ pub async fn signup(
     }
 
     let hashed_password = hash(&body.password, DEFAULT_COST)?;
-    let row = conn
-        .query_one(
+    conn
+        .execute(
             "INSERT INTO users(username, password, fname, lname) values($1, $2, $3, $4) RETURNING user_id",
             &[&body.username, &hashed_password, &body.fname, &body.lname],
         )
         .await?;
-
-    let user_id: i32 = row.get(0);
-    std::fs::create_dir(format!("{}/{}", &state.dirs.file_upload, &user_id))?;
-    std::fs::create_dir(format!("{}/{}/sm", &state.dirs.file_upload, &user_id))?;
-    std::fs::create_dir(format!("{}/{}/md", &state.dirs.file_upload, &user_id))?;
-    std::fs::create_dir(format!("{}/{}/lg", &state.dirs.file_upload, &user_id))?;
 
     let user_response = json!({
         "username": &body.username.clone(),
@@ -222,7 +216,7 @@ pub async fn get_user_session(header: http::HeaderMap) -> Result<impl IntoRespon
     }
 }
 
-pub async fn logout() -> Result<impl IntoResponse, AppError> {
+pub async fn logout(session: Session) -> Result<impl IntoResponse, AppError> {
     let cookie = CookieBuilder::new("Authorization", "".to_string())
         .same_site(cookie::SameSite::None)
         .secure(true)
@@ -234,6 +228,8 @@ pub async fn logout() -> Result<impl IntoResponse, AppError> {
 
     let mut header_map = HeaderMap::new();
     header_map.insert(header::SET_COOKIE, cookie.parse().unwrap());
+    session.remove::<Value>("AUTH_USER").await?;
+    session.remove::<Value>("AUTH_USER_ID").await?;
 
     Ok((
         StatusCode::OK,

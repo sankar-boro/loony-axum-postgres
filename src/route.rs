@@ -34,7 +34,6 @@ pub async fn home() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::V
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        // header_map,
         Json(json!({"sankar": "boro"})),
     ))
 }

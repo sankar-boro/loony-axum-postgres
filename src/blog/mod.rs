@@ -78,7 +78,7 @@ pub async fn create_blog(
 
     let _ = &body.images.move_images(
         &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload,
+        &pool.dirs.file_upload_doc,
         user_id,
         blog_id,
     );
@@ -205,7 +205,7 @@ pub async fn append_blog_node(
 
     let _ = &body.images.move_images(
         &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload,
+        &pool.dirs.file_upload_doc,
         user_id,
         body.blog_id,
     );

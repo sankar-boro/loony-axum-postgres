@@ -20,9 +20,11 @@ use tower_http::cors::CorsLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct Dirs {
     file_upload_tmp: String,
-    file_upload: String,
+    file_upload_doc: String,
+    file_upload_user: String,
 }
 
 #[derive(Clone)]
@@ -52,7 +54,8 @@ async fn create_connection() -> AppState {
         pg_pool,
         dirs: Dirs {
             file_upload_tmp: String::from(std::env::var("FILE_UPLOADS_TMP").unwrap()),
-            file_upload: String::from(std::env::var("FILE_UPLOADS").unwrap()),
+            file_upload_doc: String::from(std::env::var("FILE_UPLOADS_DOC").unwrap()),
+            file_upload_user: String::from(std::env::var("FILE_UPLOADS_USER").unwrap()),
         }, // redis_pool
     };
 }

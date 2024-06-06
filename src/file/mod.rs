@@ -135,7 +135,7 @@ pub async fn get_file(
     // Assuming files are stored in a directory named 'files'
     let file_path = format!(
         "{}/{}/{}/{}",
-        &state.dirs.file_upload, project_id, size, filename
+        &state.dirs.file_upload_doc, project_id, size, filename
     );
 
     // Attempt to read the file contents
@@ -155,7 +155,7 @@ pub async fn get_uploaded_file(
     // Assuming files are stored in a directory named 'files'
     let file_path = format!(
         "{}/{}/{}/{}",
-        &state.dirs.file_upload, user_id, size, filename
+        &state.dirs.file_upload_doc, user_id, size, filename
     );
     // Attempt to read the file contents
     let f = std::fs::read(&file_path)?;
