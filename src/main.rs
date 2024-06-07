@@ -7,6 +7,7 @@ mod file;
 mod query;
 mod route;
 mod traits;
+mod types;
 mod utils;
 
 use axum::http::{

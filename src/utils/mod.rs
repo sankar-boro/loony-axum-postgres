@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::types::ImageMetadata;
 use tower_sessions::Session;
 
 pub trait GetUserId {
@@ -20,4 +21,11 @@ impl GetUserId for Session {
         };
         Ok(user_id)
     }
+}
+
+pub fn new_height(img_metadata: &ImageMetadata) -> u32 {
+    let new_width_percent =
+        ((img_metadata.cropImgMd.width - 340) * 100) / img_metadata.cropImgMd.width;
+    let new_height = img_metadata.cropImgMd.height / 100 * new_width_percent;
+    new_height
 }

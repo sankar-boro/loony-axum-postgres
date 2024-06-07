@@ -1,3 +1,5 @@
+use crate::types::ImageMetadata;
+use crate::utils::new_height;
 use crate::{error::AppError, AppState};
 use axum::{
     extract::{Multipart, Path as AxumPath, State},
@@ -6,33 +8,11 @@ use axum::{
     Json,
 };
 use image::{imageops::FilterType, ImageFormat};
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::io::Cursor;
 use std::path::Path;
 use tower_sessions::Session;
 use uuid::Uuid;
-
-#[derive(Serialize, Deserialize)]
-struct OriImgMd {
-    width: i32,
-    height: i32,
-}
-
-#[derive(Serialize, Deserialize)]
-struct CropImgMd {
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
-}
-
-#[derive(Serialize, Deserialize)]
-#[allow(non_snake_case)]
-struct ImageMetadata {
-    oriImgMd: OriImgMd,
-    cropImgMd: CropImgMd,
-}
 
 async fn create_tmp_path(
     state: &AppState,
@@ -43,15 +23,15 @@ async fn create_tmp_path(
     let user_id: u32 = session.get("AUTH_USER_ID").await?.unwrap();
     let filename = format!("{}.{}", &unique_uuid, extension);
     let lg_fpath = format!(
-        "{}/{}/lg_{}",
+        "{}/{}/lg-{}",
         &state.dirs.file_upload_tmp, &user_id, &filename
     );
     let md_fpath = format!(
-        "{}/{}/md_{}",
+        "{}/{}/md-{}",
         &state.dirs.file_upload_tmp, &user_id, &filename
     );
     let sm_fpath = format!(
-        "{}/{}/sm_{}",
+        "{}/{}/sm-{}",
         &state.dirs.file_upload_tmp, &user_id, &filename
     );
     Ok((filename, lg_fpath, md_fpath, sm_fpath, user_id))
@@ -87,27 +67,31 @@ pub async fn upload_file(
                 std::fs::create_dir(tmp_upload_path)?;
             }
 
-            let cropped_img_lg = dynamic_image.crop_imm(
+            let cropped_img = dynamic_image.crop_imm(
                 img_metadata.cropImgMd.x,
                 img_metadata.cropImgMd.y,
                 img_metadata.cropImgMd.width,
                 img_metadata.cropImgMd.height,
             );
+
             let sm_img_width = 340;
             let md_img_width = 720;
+            let lg_img_width = 1420;
+            let sm_img_height = new_height(&img_metadata);
+            let md_img_height = new_height(&img_metadata);
+            let lg_img_height = new_height(&img_metadata);
 
-            let new_width_percent =
-                ((img_metadata.cropImgMd.width - 340) * 100) / img_metadata.cropImgMd.width;
-            let new_height = img_metadata.cropImgMd.height / 100 * new_width_percent;
-
-            let cropped_img_md =
-                cropped_img_lg.resize(md_img_width, new_height, FilterType::Lanczos3);
             let cropped_img_sm =
-                cropped_img_lg.resize(sm_img_width, new_height, FilterType::Lanczos3);
+                cropped_img.resize(sm_img_width, sm_img_height, FilterType::Lanczos3);
+            let cropped_img_md =
+                cropped_img.resize(md_img_width, md_img_height, FilterType::Lanczos3);
+            let cropped_img_lg =
+                cropped_img.resize(lg_img_width, lg_img_height, FilterType::Lanczos3);
 
-            cropped_img_lg.save(&lg_fpath)?;
+            cropped_img_sm.save(&lg_fpath)?;
             cropped_img_md.save(&md_fpath)?;
-            cropped_img_sm.save(&sm_fpath)?;
+            cropped_img_lg.save(&sm_fpath)?;
+
             return Ok((
                 StatusCode::OK,
                 [(header::CONTENT_TYPE, "application/json")],
@@ -130,12 +114,11 @@ pub async fn upload_file(
 
 pub async fn get_file(
     State(state): State<AppState>,
-    AxumPath((project_id, size, filename)): AxumPath<(i32, String, String)>,
+    AxumPath((uid, size, filename)): AxumPath<(i32, String, String)>,
 ) -> Result<impl IntoResponse, AppError> {
-    // Assuming files are stored in a directory named 'files'
     let file_path = format!(
-        "{}/{}/{}/{}",
-        &state.dirs.file_upload_doc, project_id, size, filename
+        "{}/{}/{}-{}",
+        &state.dirs.file_upload_doc, uid, size, filename
     );
 
     // Attempt to read the file contents
@@ -148,14 +131,13 @@ pub async fn get_file(
     ))
 }
 
-pub async fn get_uploaded_file(
+pub async fn get_tmp_file(
     State(state): State<AppState>,
-    AxumPath((user_id, size, filename)): AxumPath<(i32, String, String)>,
+    AxumPath((uid, size, filename)): AxumPath<(i32, String, String)>,
 ) -> Result<impl IntoResponse, AppError> {
-    // Assuming files are stored in a directory named 'files'
     let file_path = format!(
-        "{}/{}/{}/{}",
-        &state.dirs.file_upload_doc, user_id, size, filename
+        "{}/{}/{}-{}",
+        &state.dirs.file_upload_tmp, uid, size, filename
     );
     // Attempt to read the file contents
     let f = std::fs::read(&file_path)?;

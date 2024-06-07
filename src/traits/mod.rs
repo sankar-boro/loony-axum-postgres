@@ -26,28 +26,40 @@ impl MoveImages for Vec<Images> {
         user_id: i32,
         project_id: i32,
     ) -> Result<(), AppError> {
+        let images = [("lg", 1420), ("md", 720), ("sm", 320)];
         let mut iter_images = self.iter();
         let project_path = format!("{}/{}", file_upload_doc, project_id);
 
         if !std::path::Path::new(&project_path).exists() {
             fs::create_dir(&project_path)?;
-            fs::create_dir(format!("{}/lg", &project_path))?;
-            fs::create_dir(format!("{}/md", &project_path))?;
-            fs::create_dir(format!("{}/sm", &project_path))?;
         }
 
         while let Some(image) = iter_images.next() {
-            let source_path = format!("{}/{}/lg_{}", file_upload_tmp, user_id, image.name);
-            let destination_path = format!("{}/{}/lg/{}", file_upload_doc, project_id, image.name);
-            fs::rename(&source_path, &destination_path)?;
+            for (size, dimensions) in images.iter() {
+                let source_path =
+                    format!("{}/{}/{}-{}", file_upload_tmp, user_id, size, image.name);
+                let destination_path = format!(
+                    "{}/{}/{}-{}",
+                    file_upload_doc, project_id, dimensions, image.name
+                );
+                fs::rename(&source_path, &destination_path)?;
 
-            let source_path = format!("{}/{}/md_{}", file_upload_tmp, user_id, image.name);
-            let destination_path = format!("{}/{}/md/{}", file_upload_doc, project_id, image.name);
-            fs::rename(&source_path, &destination_path)?;
+                let source_path =
+                    format!("{}/{}/{}-{}", file_upload_tmp, user_id, size, image.name);
+                let destination_path = format!(
+                    "{}/{}/{}-{}",
+                    file_upload_doc, project_id, dimensions, image.name
+                );
+                fs::rename(&source_path, &destination_path)?;
 
-            let source_path = format!("{}/{}/sm_{}", file_upload_tmp, user_id, image.name);
-            let destination_path = format!("{}/{}/sm/{}", file_upload_doc, project_id, image.name);
-            fs::rename(&source_path, &destination_path)?;
+                let source_path =
+                    format!("{}/{}/{}-{}", file_upload_tmp, user_id, size, image.name);
+                let destination_path = format!(
+                    "{}/{}/{}-{}",
+                    file_upload_doc, project_id, dimensions, image.name
+                );
+                fs::rename(&source_path, &destination_path)?;
+            }
         }
 
         Ok(())
