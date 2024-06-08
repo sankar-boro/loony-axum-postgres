@@ -23,15 +23,15 @@ async fn create_tmp_path(
     let user_id: u32 = session.get("AUTH_USER_ID").await?.unwrap();
     let filename = format!("{}.{}", &unique_uuid, extension);
     let lg_fpath = format!(
-        "{}/{}/lg-{}",
+        "{}/{}/1420-{}",
         &state.dirs.file_upload_tmp, &user_id, &filename
     );
     let md_fpath = format!(
-        "{}/{}/md-{}",
+        "{}/{}/720-{}",
         &state.dirs.file_upload_tmp, &user_id, &filename
     );
     let sm_fpath = format!(
-        "{}/{}/sm-{}",
+        "{}/{}/340-{}",
         &state.dirs.file_upload_tmp, &user_id, &filename
     );
     Ok((filename, lg_fpath, md_fpath, sm_fpath, user_id))
@@ -88,9 +88,9 @@ pub async fn upload_file(
             let cropped_img_lg =
                 cropped_img.resize(lg_img_width, lg_img_height, FilterType::Lanczos3);
 
-            cropped_img_sm.save(&lg_fpath)?;
+            cropped_img_sm.save(&sm_fpath)?;
             cropped_img_md.save(&md_fpath)?;
-            cropped_img_lg.save(&sm_fpath)?;
+            cropped_img_lg.save(&lg_fpath)?;
 
             return Ok((
                 StatusCode::OK,

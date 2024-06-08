@@ -2,6 +2,22 @@
 
 cargo build --release
 
+#!/bin/bash
+
+DIRECTORY="/home/sankar/.tmp_uploads"
+DIRECTORY1="/home/sankar/.doc_uploads"
+DIRECTORY2="/home/sankar/.user_uploads"
+
+if [ ! -d "$DIRECTORY" ]; then
+    mkdir $DIRECTORY
+fi
+if [ ! -d "$DIRECTORY1" ]; then
+    mkdir $DIRECTORY1
+fi
+if [ ! -d "$DIRECTORY2" ]; then
+    mkdir $DIRECTORY2
+fi
+
 RUST_LOG=info \
 HOST=localhost \
 PORT=5002 \

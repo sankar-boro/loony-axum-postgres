@@ -26,7 +26,7 @@ impl MoveImages for Vec<Images> {
         user_id: i32,
         project_id: i32,
     ) -> Result<(), AppError> {
-        let images = [("lg", 1420), ("md", 720), ("sm", 320)];
+        let images = [1420, 720, 340];
         let mut iter_images = self.iter();
         let project_path = format!("{}/{}", file_upload_doc, project_id);
 
@@ -35,29 +35,16 @@ impl MoveImages for Vec<Images> {
         }
 
         while let Some(image) = iter_images.next() {
-            for (size, dimensions) in images.iter() {
-                let source_path =
-                    format!("{}/{}/{}-{}", file_upload_tmp, user_id, size, image.name);
+            for dimensions in images.iter() {
+                let source_path = format!(
+                    "{}/{}/{}-{}",
+                    file_upload_tmp, user_id, dimensions, image.name
+                );
                 let destination_path = format!(
                     "{}/{}/{}-{}",
                     file_upload_doc, project_id, dimensions, image.name
                 );
-                fs::rename(&source_path, &destination_path)?;
 
-                let source_path =
-                    format!("{}/{}/{}-{}", file_upload_tmp, user_id, size, image.name);
-                let destination_path = format!(
-                    "{}/{}/{}-{}",
-                    file_upload_doc, project_id, dimensions, image.name
-                );
-                fs::rename(&source_path, &destination_path)?;
-
-                let source_path =
-                    format!("{}/{}/{}-{}", file_upload_tmp, user_id, size, image.name);
-                let destination_path = format!(
-                    "{}/{}/{}-{}",
-                    file_upload_doc, project_id, dimensions, image.name
-                );
                 fs::rename(&source_path, &destination_path)?;
             }
         }
