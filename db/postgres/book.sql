@@ -4,6 +4,7 @@ CREATE TABLE books (
     title TEXT,
     body TEXT,
     images TEXT,
+    tags TEXT,
     metadata TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -16,6 +17,7 @@ CREATE TABLE book (
     page_id INT, -- page_id is required to show all nodes of a page
     parent_id INT,
     title TEXT,
+    tags TEXT,
     body TEXT,
     images TEXT,
     identity smallINT,

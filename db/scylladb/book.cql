@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS categorybooks;
 -- table books is used for rendering books when user is not logged in.
 CREATE TABLE books (
     bookId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
@@ -23,7 +23,7 @@ CREATE TABLE book (
     pageId timeuuid,
     uniqueId timeuuid,
     parentId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
@@ -35,19 +35,19 @@ CREATE TABLE book (
 );
 CREATE TABLE userbooks (
     bookId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
     metadata TEXT.
     createdAt timeuuid,
     updatedAt timeuuid,
-    PRIMARY KEY (authorId, bookId)
+    PRIMARY KEY (userId, bookId)
 ) WITH CLUSTERING ORDER BY (bookId DESC);
 CREATE TABLE categorybooks (
     category TEXT.
     bookId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.

@@ -2,15 +2,15 @@ use sankar;
 DROP TABLE IF EXISTS usercategories;
 DROP TABLE IF EXISTS allcategories;
 CREATE TABLE usercategories (
-    authorId INT,
+    userId INT,
     category varchar,
     createdAt timeuuid,
     updatedAt timeuuid,
-    PRIMARY KEY (authorId, category)
+    PRIMARY KEY (userId, category)
 );
 CREATE TABLE allcategories (
     category varchar,
-    authorId varchar,
+    userId varchar,
     createdAt timeuuid,
     updatedAt timeuuid,
     PRIMARY KEY (category)

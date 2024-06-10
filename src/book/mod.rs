@@ -18,6 +18,7 @@ pub struct CreateBook {
     title: String,
     body: String,
     images: Vec<Images>,
+    tags: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -42,25 +43,21 @@ pub async fn create_book(
     let mut conn = pool.pg_pool.get().await?;
 
     let state1 = conn
-        .prepare("INSERT INTO books(title, body, images, user_id) VALUES($1, $2, $3, $4) RETURNING book_id")
+        .prepare("INSERT INTO books(title, body, images, user_id, tags) VALUES($1, $2, $3, $4, $5) RETURNING book_id")
         .await?;
     let state2 = conn
-        .prepare("INSERT INTO book(book_id, title, identity, body, images, user_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING *")
+        .prepare("INSERT INTO book(book_id, title, identity, body, images, user_id, tags) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING *")
         .await?;
     let transaction = conn.transaction().await?;
 
     let row = transaction
-        .query_one(&state1, &[&body.title, &body.body, &images, &user_id])
+        .query_one(
+            &state1,
+            &[&body.title, &body.body, &images, &user_id, &body.tags],
+        )
         .await?;
 
     let book_id: i32 = row.get(0);
-
-    let _ = &body.images.move_images(
-        &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload_doc,
-        user_id,
-        book_id,
-    );
 
     transaction
         .execute(
@@ -72,10 +69,18 @@ pub async fn create_book(
                 &body.body,
                 &images,
                 &user_id,
+                &body.tags,
             ],
         )
         .await?;
     transaction.commit().await?;
+
+    let _ = &body.images.move_images(
+        &pool.dirs.file_upload_tmp,
+        &pool.dirs.file_upload_doc,
+        user_id,
+        book_id,
+    );
 
     let new_book = json!({
         "book_id": book_id,
@@ -102,6 +107,7 @@ pub struct AddBookNode {
     parent_id: i32,
     page_id: Option<i32>,
     identity: i16,
+    tags: Option<String>,
 }
 
 pub async fn append_book_node(
@@ -129,7 +135,7 @@ pub async fn append_book_node(
 
     let state1 = conn
     .prepare(
-        "INSERT INTO book(book_id, page_id, parent_id, title, body, identity, images) values($1, $2, $3, $4, $5, $6, $7) returning uid",
+        "INSERT INTO book(book_id, page_id, parent_id, title, body, identity, images, tags) values($1, $2, $3, $4, $5, $6, $7, $8) returning uid",
     )
     .await?;
     let state2 = conn
@@ -148,6 +154,7 @@ pub async fn append_book_node(
                 &body.body,
                 &body.identity,
                 &images,
+                &body.tags,
             ],
         )
         .await?;
@@ -177,7 +184,8 @@ pub async fn append_book_node(
                 "body": &body.body,
                 "images": &images,
                 "identity": &body.identity,
-                "page_id": &body.page_id
+                "page_id": &body.page_id,
+                "tags": &body.tags
             },
             "update_node": {
                 "update_row_id": update_row_uid,

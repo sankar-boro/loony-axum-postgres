@@ -18,6 +18,7 @@ pub struct CreateBlog {
     body: String,
     images: Vec<Images>,
     user_id: i32,
+    tags: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -57,22 +58,28 @@ pub async fn create_blog(
 
     let state1 = conn
         .prepare(
-            "INSERT INTO blogs(title, body, images, user_id) VALUES($1, $2, $3, $4) RETURNING blog_id"
+            "INSERT INTO blogs(title, body, images, user_id, tags) VALUES($1, $2, $3, $4, $5) RETURNING blog_id"
         )
         .await?;
     let state2 = conn
         .prepare(
-            "INSERT INTO blog(blog_id, title, body, images) VALUES($1, $2, $3, $4) RETURNING *",
+            "INSERT INTO blog(blog_id, title, body, images, tags) VALUES($1, $2, $3, $4, $5) RETURNING *",
         )
         .await?;
 
     let transaction = conn.transaction().await?;
     let row = transaction
-        .query_one(&state1, &[&body.title, &body.body, &images, &body.user_id])
+        .query_one(
+            &state1,
+            &[&body.title, &body.body, &images, &body.user_id, &body.tags],
+        )
         .await?;
     let blog_id: i32 = row.get(0);
     transaction
-        .execute(&state2, &[&blog_id, &body.title, &body.body, &images])
+        .execute(
+            &state2,
+            &[&blog_id, &body.title, &body.body, &images, &body.tags],
+        )
         .await?;
     transaction.commit().await?;
 
@@ -92,6 +99,7 @@ pub async fn create_blog(
             "body": &body.body.clone(),
             "images": &images,
             "user_id": &body.user_id,
+            "tags": &body.tags
         })),
     ))
 }
@@ -138,6 +146,7 @@ pub struct AddBlogNode {
     body: String,
     images: Vec<Images>,
     parent_id: i32,
+    tags: Option<String>,
 }
 
 pub async fn append_blog_node(
@@ -168,7 +177,7 @@ pub async fn append_blog_node(
 
     let state1 = conn
         .prepare(
-            "INSERT INTO blog(blog_id, parent_id, title, body, images) values($1, $2, $3, $4, $5) returning uid"
+            "INSERT INTO blog(blog_id, parent_id, title, body, images, tags) values($1, $2, $3, $4, $5, $6) returning uid"
         )
         .await?;
 
@@ -186,6 +195,7 @@ pub async fn append_blog_node(
                 &body.title,
                 &body.body,
                 &images,
+                &body.tags,
             ],
         )
         .await?;
@@ -219,7 +229,8 @@ pub async fn append_blog_node(
                 "parent_id": &body.parent_id,
                 "title": &body.title,
                 "body": &body.body,
-                "images": &body.images
+                "images": &body.images,
+                "tags": &body.tags
             },
             "update_node": {
                 "update_row_id": update_row_uid,

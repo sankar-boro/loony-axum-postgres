@@ -7,7 +7,7 @@ CREATE KEYSPACE sankar WITH replication = {
 
 CREATE TABLE blogs (
     blogId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
@@ -20,7 +20,7 @@ CREATE TABLE blog (
     blogId timeuuid,
     uniqueId timeuuid,
     parentId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
@@ -32,19 +32,19 @@ CREATE TABLE blog (
 );
 CREATE TABLE userblogs (
     blogId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
     metadata TEXT.
     createdAt timeuuid,
     updatedAt timeuuid,
-    PRIMARY KEY (authorId, blogId)
+    PRIMARY KEY (userId, blogId)
 ) WITH CLUSTERING ORDER BY (blogId DESC);;
 CREATE TABLE categoryblogs (
     category TEXT.
     blogId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
@@ -58,7 +58,7 @@ CREATE TABLE categoryblogs (
 
 CREATE TABLE books (
     bookId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
@@ -72,7 +72,7 @@ CREATE TABLE book (
     pageId timeuuid,
     uniqueId timeuuid,
     parentId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
@@ -84,19 +84,19 @@ CREATE TABLE book (
 );
 CREATE TABLE userbooks (
     bookId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
     metadata TEXT.
     createdAt timeuuid,
     updatedAt timeuuid,
-    PRIMARY KEY (authorId, bookId)
+    PRIMARY KEY (userId, bookId)
 ) WITH CLUSTERING ORDER BY (bookId DESC);
 CREATE TABLE categorybooks (
     category TEXT.
     bookId timeuuid,
-    authorId INT,
+    userId INT,
     title varchar,
     body TEXT.
     url TEXT.
@@ -116,11 +116,11 @@ CREATE TABLE book_title (
 
 -- Categories
 CREATE TABLE usercategories (
-    authorId INT,
+    userId INT,
     category varchar,
     createdAt timeuuid,
     updatedAt timeuuid,
-    PRIMARY KEY (authorId)
+    PRIMARY KEY (userId)
 );
 CREATE TABLE allcategories (
     category varchar,
