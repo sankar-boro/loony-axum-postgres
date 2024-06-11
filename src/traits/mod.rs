@@ -15,7 +15,6 @@ pub trait MoveImages {
 #[derive(Deserialize, Serialize)]
 pub struct Images {
     pub name: String,
-    pub tags: Vec<String>,
 }
 
 impl MoveImages for Vec<Images> {
