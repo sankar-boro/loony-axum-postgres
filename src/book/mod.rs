@@ -203,17 +203,7 @@ pub async fn edit_book(
     State(pool): State<AppState>,
     Json(body): Json<EditBook>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id: i32 = match session.get("AUTH_USER_ID").await {
-        Ok(x) => match x {
-            Some(x) => x,
-            None => {
-                return Err(AppError::InternalServerError(
-                    "User session not found".to_string(),
-                ))
-            }
-        },
-        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
-    };
+    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body.images.move_images(
@@ -223,10 +213,10 @@ pub async fn edit_book(
         body.book_id,
     );
     let state1 = conn
-        .prepare("UPDATE books SET title=$1, body=$2, $images=$3 WHERE book_id=$4")
+        .prepare("UPDATE books SET title=$1, body=$2, images=$3 WHERE book_id=$4")
         .await?;
     let state2 = conn
-        .prepare("UPDATE book SET title=$1, body=$2, $images=$3 WHERE book_id=$4")
+        .prepare("UPDATE book SET title=$1, body=$2, images=$3 WHERE book_id=$4")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
@@ -267,17 +257,7 @@ pub async fn edit_book_node(
     State(pool): State<AppState>,
     Json(body): Json<EditBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id: i32 = match session.get("AUTH_USER_ID").await {
-        Ok(x) => match x {
-            Some(x) => x,
-            None => {
-                return Err(AppError::InternalServerError(
-                    "User session not found".to_string(),
-                ))
-            }
-        },
-        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
-    };
+    let user_id = session.get_user_id().await?;
     let conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body.images.move_images(

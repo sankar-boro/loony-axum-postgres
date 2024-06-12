@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
+use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
     extract::{Query, State},
@@ -17,7 +18,6 @@ pub struct CreateBlog {
     title: String,
     body: String,
     images: Vec<Images>,
-    user_id: i32,
     tags: Option<String>,
 }
 
@@ -27,6 +27,7 @@ pub struct EditBlog {
     title: String,
     body: String,
     identity: i16,
+    images: Vec<Images>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -42,17 +43,7 @@ pub async fn create_blog(
     State(pool): State<AppState>,
     Json(body): Json<CreateBlog>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id: i32 = match session.get("AUTH_USER_ID").await {
-        Ok(x) => match x {
-            Some(x) => x,
-            None => {
-                return Err(AppError::InternalServerError(
-                    "User session not found".to_string(),
-                ))
-            }
-        },
-        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
-    };
+    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
 
@@ -71,7 +62,7 @@ pub async fn create_blog(
     let row = transaction
         .query_one(
             &state1,
-            &[&body.title, &body.body, &images, &body.user_id, &body.tags],
+            &[&body.title, &body.body, &images, &user_id, &body.tags],
         )
         .await?;
     let blog_id: i32 = row.get(0);
@@ -98,21 +89,26 @@ pub async fn create_blog(
             "title": &body.title.clone(),
             "body": &body.body.clone(),
             "images": &images,
-            "user_id": &body.user_id,
+            "user_id": &user_id,
             "tags": &body.tags
         })),
     ))
 }
 
 pub async fn edit_blog(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<EditBlog>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id = session.get_user_id().await?;
+
     let conn = pool.pg_pool.get().await?;
+    let images = &serde_json::to_string(&body.images).unwrap();
+
     let row = conn
         .query_one(
-            "UPDATE blogs SET title=$1 AND body=$2 WHERE blog_id=$3",
-            &[&body.title, &body.body, &body.blog_id],
+            "UPDATE blogs SET title=$1, body=$2, images=$3 WHERE blog_id=$4",
+            &[&body.title, &body.body, &images, &body.blog_id],
         )
         .await?;
 
@@ -120,8 +116,8 @@ pub async fn edit_blog(
 
     let _ = conn
         .query_one(
-            "UPDATE blog SET title=$1 AND body=$2 WHERE blog_id=$3",
-            &[&blog_id, &body.title, &body.body, &body.blog_id],
+            "UPDATE blog SET title=$1, body=$2, images=$3 WHERE blog_id=$4",
+            &[&blog_id, &body.title, &body.body, &images, &body.blog_id],
         )
         .await?;
 
@@ -129,9 +125,15 @@ pub async fn edit_blog(
         "blog_id": blog_id,
         "title": &body.title.clone(),
         "body": &body.body.clone(),
+        "images": &images,
         "blog_id": &body.blog_id
     });
-
+    let _ = &body.images.move_images(
+        &pool.dirs.file_upload_tmp,
+        &pool.dirs.file_upload_doc,
+        user_id,
+        blog_id,
+    );
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
@@ -407,31 +409,40 @@ pub struct EditBlogNode {
     body: String,
     identity: i16,
     blog_id: i32,
+    images: Vec<Images>,
 }
 
 pub async fn edit_blog_node(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<EditBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.get().await?;
+    let images = &serde_json::to_string(&body.images).unwrap();
     let state1 = conn
-        .prepare("UPDATE blog SET title=$1, body=$2 WHERE uid=$3")
+        .prepare("UPDATE blog SET title=$1, body=$2, images=$3 WHERE uid=$4")
         .await?;
     let state2 = conn
-        .prepare("UPDATE blogs SET title=$1, body=$2 WHERE blog_id=$3")
+        .prepare("UPDATE blogs SET title=$1, body=$2, images=$3 WHERE blog_id=$4")
         .await?;
     let transaction = conn.transaction().await?;
 
     transaction
-        .execute(&state1, &[&body.title, &body.body, &body.uid])
+        .execute(&state1, &[&body.title, &body.body, &images, &body.uid])
         .await?;
     if *&body.identity == 100 {
         transaction
-            .execute(&state2, &[&body.title, &body.body, &body.blog_id])
+            .execute(&state2, &[&body.title, &body.body, &images, &body.blog_id])
             .await?;
     }
     transaction.commit().await?;
-
+    let _ = &body.images.move_images(
+        &pool.dirs.file_upload_tmp,
+        &pool.dirs.file_upload_doc,
+        user_id,
+        body.blog_id,
+    );
     let edit_blog = json!({
         "status": 200,
         "message": "UPDATED",

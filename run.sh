@@ -2,33 +2,35 @@
 
 cargo build --release
 
-#!/bin/bash
+USERNAME="sankar"
+HOME="/home/sankar"
+TMP_UPLOADS_DIRECTORY="$HOME/.tmp_uploads"
+DOCUMENT_UPLOADS_DIRECTORY="$HOME/.doc_uploads"
+USER_UPLOADS_DIR="$HOME/.user_uploads"
+ALLOW_ORIGIN="http://localhost:3000"
+SECRET_KEY="lorem_ipsum_dolor_isset"
 
-DIRECTORY="/home/sankar/.tmp_uploads"
-DIRECTORY1="/home/sankar/.doc_uploads"
-DIRECTORY2="/home/sankar/.user_uploads"
-
-if [ ! -d "$DIRECTORY" ]; then
-    mkdir $DIRECTORY
+if [ ! -d "$TMP_UPLOADS_DIRECTORY" ]; then
+    mkdir $TMP_UPLOADS_DIRECTORY
 fi
-if [ ! -d "$DIRECTORY1" ]; then
-    mkdir $DIRECTORY1
+if [ ! -d "$DOCUMENT_UPLOADS_DIRECTORY" ]; then
+    mkdir $DOCUMENT_UPLOADS_DIRECTORY
 fi
-if [ ! -d "$DIRECTORY2" ]; then
-    mkdir $DIRECTORY2
+if [ ! -d "$USER_UPLOADS_DIR" ]; then
+    mkdir $USER_UPLOADS_DIR
 fi
 
 RUST_LOG=info \
 HOST=localhost \
 PORT=5002 \
-PASSWORD=sankar \
+PASSWORD="$USERNAME" \
 PG_HOST=localhost \
-PG_USER=sankar \
-PG_DBNAME=sankar \
-PG_PASSWORD=sankar \
-ALLOW_ORIGIN=http://localhost:3000 \
-SECRET_KEY=lorem_ipsum_dolor_isset \
-FILE_UPLOADS_TMP=/home/sankar/.tmp_uploads \
-FILE_UPLOADS_DOC=/home/sankar/.doc_uploads \
-FILE_UPLOADS_USER=/home/sankar/.user_uploads \
+PG_USER="$USERNAME" \
+PG_DBNAME="$USERNAME" \
+PG_PASSWORD="$USERNAME" \
+ALLOW_ORIGIN="$ALLOW_ORIGIN" \
+SECRET_KEY="$SECRET_KEY" \
+FILE_UPLOADS_TMP="$TMP_UPLOADS_DIRECTORY" \
+FILE_UPLOADS_DOC="$DOCUMENT_UPLOADS_DIRECTORY" \
+FILE_UPLOADS_USER="$USER_UPLOADS_DIR" \
 ./target/release/loony
