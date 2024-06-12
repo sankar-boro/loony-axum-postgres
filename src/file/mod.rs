@@ -22,18 +22,9 @@ async fn create_tmp_path(
     let unique_uuid = Uuid::new_v4().to_string();
     let user_id: u32 = session.get("AUTH_USER_ID").await?.unwrap();
     let filename = format!("{}.{}", &unique_uuid, extension);
-    let lg_fpath = format!(
-        "{}/{}/1420-{}",
-        &state.dirs.file_upload_tmp, &user_id, &filename
-    );
-    let md_fpath = format!(
-        "{}/{}/720-{}",
-        &state.dirs.file_upload_tmp, &user_id, &filename
-    );
-    let sm_fpath = format!(
-        "{}/{}/340-{}",
-        &state.dirs.file_upload_tmp, &user_id, &filename
-    );
+    let lg_fpath = format!("{}/{}/1420-{}", &state.dirs.tmp_upload, &user_id, &filename);
+    let md_fpath = format!("{}/{}/720-{}", &state.dirs.tmp_upload, &user_id, &filename);
+    let sm_fpath = format!("{}/{}/340-{}", &state.dirs.tmp_upload, &user_id, &filename);
     Ok((filename, lg_fpath, md_fpath, sm_fpath, user_id))
 }
 
@@ -62,7 +53,7 @@ pub async fn upload_file(
             let cursor = Cursor::new(&img_bytes);
             let dynamic_image = image::load(cursor, format.unwrap())?;
 
-            let tmp_upload_path = &format!("{}/{}", &state.dirs.file_upload_tmp, &user_id);
+            let tmp_upload_path = &format!("{}/{}", &state.dirs.tmp_upload, &user_id);
             if !Path::new(tmp_upload_path).is_dir() {
                 std::fs::create_dir(tmp_upload_path)?;
             }
@@ -112,14 +103,27 @@ pub async fn upload_file(
     ))
 }
 
-pub async fn get_file(
+pub async fn get_blog_file(
     State(state): State<AppState>,
     AxumPath((uid, size, filename)): AxumPath<(i32, String, String)>,
 ) -> Result<impl IntoResponse, AppError> {
-    let file_path = format!(
-        "{}/{}/{}-{}",
-        &state.dirs.file_upload_doc, uid, size, filename
-    );
+    let file_path = format!("{}/{}/{}-{}", &state.dirs.blog_upload, uid, size, filename);
+
+    // Attempt to read the file contents
+    let f = std::fs::read(&file_path)?;
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        f,
+    ))
+}
+
+pub async fn get_book_file(
+    State(state): State<AppState>,
+    AxumPath((uid, size, filename)): AxumPath<(i32, String, String)>,
+) -> Result<impl IntoResponse, AppError> {
+    let file_path = format!("{}/{}/{}-{}", &state.dirs.book_upload, uid, size, filename);
 
     // Attempt to read the file contents
     let f = std::fs::read(&file_path)?;
@@ -135,10 +139,7 @@ pub async fn get_tmp_file(
     State(state): State<AppState>,
     AxumPath((uid, size, filename)): AxumPath<(i32, String, String)>,
 ) -> Result<impl IntoResponse, AppError> {
-    let file_path = format!(
-        "{}/{}/{}-{}",
-        &state.dirs.file_upload_tmp, uid, size, filename
-    );
+    let file_path = format!("{}/{}/{}-{}", &state.dirs.tmp_upload, uid, size, filename);
     // Attempt to read the file contents
     let f = std::fs::read(&file_path)?;
 

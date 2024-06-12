@@ -23,9 +23,10 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct Dirs {
-    file_upload_tmp: String,
-    file_upload_doc: String,
-    file_upload_user: String,
+    tmp_upload: String,
+    blog_upload: String,
+    book_upload: String,
+    user_upload: String,
 }
 
 #[derive(Clone)]
@@ -54,9 +55,10 @@ async fn create_connection() -> AppState {
     return AppState {
         pg_pool,
         dirs: Dirs {
-            file_upload_tmp: String::from(std::env::var("FILE_UPLOADS_TMP").unwrap()),
-            file_upload_doc: String::from(std::env::var("FILE_UPLOADS_DOC").unwrap()),
-            file_upload_user: String::from(std::env::var("FILE_UPLOADS_USER").unwrap()),
+            tmp_upload: String::from(std::env::var("TMP_UPLOADS").unwrap()),
+            blog_upload: String::from(std::env::var("BLOG_UPLOADS").unwrap()),
+            book_upload: String::from(std::env::var("BOOK_UPLOADS").unwrap()),
+            user_upload: String::from(std::env::var("USER_UPLOADS").unwrap()),
         }, // redis_pool
     };
 }

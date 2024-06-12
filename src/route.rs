@@ -18,7 +18,7 @@ use crate::book::{
     append_book_node, create_book, delete_book, delete_book_node, edit_book, edit_book_node,
     get_all_books, get_book_chapters, get_book_sections, get_book_sub_sections,
 };
-use crate::file::{get_file, get_tmp_file, upload_file};
+use crate::file::{get_blog_file, get_book_file, get_tmp_file, upload_file};
 
 use crate::{
     auth::{get_user_session, login, signup},
@@ -93,8 +93,9 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .nest("/api/blog", blog_routes)
         .nest("/api/book", book_routes)
         .route("/api/upload_file", post(upload_file))
-        .route("/api/g/:uid/:size/:filename", get(get_file))
-        .route("/api/t/:uid/:size/:filename", get(get_tmp_file))
+        .route("/api/blog/:uid/:size/:filename", get(get_blog_file))
+        .route("/api/book/:uid/:size/:filename", get(get_book_file))
+        .route("/api/tmp/:uid/:size/:filename", get(get_tmp_file))
         .route("/", get(home))
         .route("/test_query", get(test_query))
         .with_state(connection)

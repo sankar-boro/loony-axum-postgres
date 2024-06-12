@@ -75,8 +75,8 @@ pub async fn create_blog(
     transaction.commit().await?;
 
     let _ = &body.images.move_images(
-        &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload_doc,
+        &pool.dirs.tmp_upload,
+        &pool.dirs.blog_upload,
         user_id,
         blog_id,
     );
@@ -129,8 +129,8 @@ pub async fn edit_blog(
         "blog_id": &body.blog_id
     });
     let _ = &body.images.move_images(
-        &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload_doc,
+        &pool.dirs.tmp_upload,
+        &pool.dirs.blog_upload,
         user_id,
         blog_id,
     );
@@ -216,8 +216,8 @@ pub async fn append_blog_node(
     transaction.commit().await?;
 
     let _ = &body.images.move_images(
-        &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload_doc,
+        &pool.dirs.tmp_upload,
+        &pool.dirs.blog_upload,
         user_id,
         body.blog_id,
     );
@@ -438,8 +438,8 @@ pub async fn edit_blog_node(
     }
     transaction.commit().await?;
     let _ = &body.images.move_images(
-        &pool.dirs.file_upload_tmp,
-        &pool.dirs.file_upload_doc,
+        &pool.dirs.tmp_upload,
+        &pool.dirs.blog_upload,
         user_id,
         body.blog_id,
     );

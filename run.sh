@@ -4,20 +4,24 @@ cargo build --release
 
 USERNAME="sankar"
 HOME="/home/sankar"
-TMP_UPLOADS_DIRECTORY="$HOME/.tmp_uploads"
-DOCUMENT_UPLOADS_DIRECTORY="$HOME/.doc_uploads"
-USER_UPLOADS_DIR="$HOME/.user_uploads"
+TMP_UPLOADS="$HOME/.tmp_uploads"
+BLOG_UPLOADS="$HOME/.blog_uploads"
+BOOK_UPLOADS="$HOME/.book_uploads"
+USER_UPLOADS="$HOME/.user_uploads"
 ALLOW_ORIGIN="http://localhost:3000"
 SECRET_KEY="lorem_ipsum_dolor_isset"
 
-if [ ! -d "$TMP_UPLOADS_DIRECTORY" ]; then
-    mkdir $TMP_UPLOADS_DIRECTORY
+if [ ! -d "$TMP_UPLOADS" ]; then
+    mkdir $TMP_UPLOADS
 fi
-if [ ! -d "$DOCUMENT_UPLOADS_DIRECTORY" ]; then
-    mkdir $DOCUMENT_UPLOADS_DIRECTORY
+if [ ! -d "$BLOG_UPLOADS" ]; then
+    mkdir $BLOG_UPLOADS
 fi
-if [ ! -d "$USER_UPLOADS_DIR" ]; then
-    mkdir $USER_UPLOADS_DIR
+if [ ! -d "$BOOK_UPLOADS" ]; then
+    mkdir $BOOK_UPLOADS
+fi
+if [ ! -d "$USER_UPLOADS" ]; then
+    mkdir $USER_UPLOADS
 fi
 
 RUST_LOG=info \
@@ -30,7 +34,8 @@ PG_DBNAME="$USERNAME" \
 PG_PASSWORD="$USERNAME" \
 ALLOW_ORIGIN="$ALLOW_ORIGIN" \
 SECRET_KEY="$SECRET_KEY" \
-FILE_UPLOADS_TMP="$TMP_UPLOADS_DIRECTORY" \
-FILE_UPLOADS_DOC="$DOCUMENT_UPLOADS_DIRECTORY" \
-FILE_UPLOADS_USER="$USER_UPLOADS_DIR" \
+TMP_UPLOADS="$TMP_UPLOADS" \
+BLOG_UPLOADS="$BLOG_UPLOADS" \
+BOOK_UPLOADS="$BOOK_UPLOADS" \
+USER_UPLOADS="$USER_UPLOADS" \
 ./target/release/loony
