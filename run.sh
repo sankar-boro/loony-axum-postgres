@@ -1,6 +1,18 @@
 #!/usr/bin/env sh
 
-cargo build --release
+# Check if the number of arguments is exactly 2
+if [ "$#" -lt 1 ]; then
+    echo "Usage: $0 <user-directory> <build-backend>"
+    echo "<build-backend> is optional"
+    exit 1
+fi
+
+if [ "$#" -eq 2 ]; then
+    if [ "$2" = "--build-backend" ]; then
+        echo "Building loony-axum-postgres..."
+        cargo build --release
+    fi
+fi
 
 USERNAME="sankar"
 HOME="/home/sankar"
