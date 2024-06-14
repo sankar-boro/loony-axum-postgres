@@ -1,10 +1,3 @@
-use axum::{
-    http::{header, StatusCode},
-    response::IntoResponse,
-    routing::{get, post},
-    Json, Router,
-};
-
 use crate::{
     auth::logout,
     blog::{
@@ -13,6 +6,15 @@ use crate::{
     },
     book::test_query,
 };
+use axum::{
+    extract::DefaultBodyLimit,
+    http::{header, StatusCode},
+    response::IntoResponse,
+    routing::{get, post},
+    Json, Router,
+};
+use tower::ServiceBuilder;
+use tower_http::limit::RequestBodyLimitLayer;
 
 use crate::book::{
     append_book_node, create_book, delete_book, delete_book_node, edit_book, edit_book_node,
@@ -101,4 +103,10 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .with_state(connection)
         .layer(cors)
         .layer(session_layer)
+        .layer(DefaultBodyLimit::disable())
+        .layer(
+            ServiceBuilder::new()
+                .layer(RequestBodyLimitLayer::new(12 * 1024 * 1024))
+                .into_inner(),
+        )
 }
