@@ -10,7 +10,7 @@ use axum::{
 };
 use chrono::Local;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
@@ -119,14 +119,8 @@ pub async fn append_book_node(
     let mut conn = pool.pg_pool.get().await?;
 
     let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.book_upload,
-        user_id,
-        body.book_id,
-    );
 
-    let update_row = conn
+    let has_row_update = conn
         .query_one(
             "SELECT uid, parent_id, identity from book where parent_id=$1 AND identity=$2",
             &[&body.parent_id, &body.identity],
@@ -158,27 +152,43 @@ pub async fn append_book_node(
             ],
         )
         .await?;
-    let new_node_uid: i32 = res1.get(0);
-    let mut update_row_uid: Option<i32> = None;
-    if let Ok(update_row) = update_row {
+
+    let new_node_id: i32 = res1.get(0);
+
+    let mut update_node: Option<Value> = None;
+
+    if let Ok(update_row) = has_row_update {
         if !update_row.is_empty() {
-            update_row_uid = update_row.get(0);
+            let update_row_id: i32 = update_row.get(0);
             let identity: Option<i16> = update_row.get(2);
+
             if &body.identity >= &identity.unwrap() {
                 transaction
-                    .execute(&state2, &[&new_node_uid, &update_row_uid])
+                    .execute(&state2, &[&new_node_id, &update_row_id])
                     .await?;
+                update_node = Some(json!({
+                    "uid": update_row_id,
+                    "parent_id": new_node_id,
+                    "description": "update parent_id where uid"
+                }))
             }
         }
     }
     transaction.commit().await?;
+
+    let _ = &body.images.move_images(
+        &pool.dirs.tmp_upload,
+        &pool.dirs.book_upload,
+        user_id,
+        body.book_id,
+    );
 
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
         Json(json!({
             "new_node": {
-                "uid": new_node_uid,
+                "uid": new_node_id,
                 "parent_id": &body.parent_id,
                 "title": &body.title,
                 "body": &body.body,
@@ -187,10 +197,7 @@ pub async fn append_book_node(
                 "page_id": &body.page_id,
                 "tags": &body.tags
             },
-            "update_node": {
-                "update_row_id": update_row_uid,
-                "update_row_parent_id": new_node_uid
-            }
+            "update_node": update_node
         })),
     ))
 }
@@ -330,8 +337,8 @@ pub async fn delete_book(
 #[derive(Deserialize, Serialize)]
 pub struct DeleteBookNode {
     identity: i16,
-    delete_node_id: i32,
-    update_parent_id: i32,
+    delete_id: i32,
+    parent_id: i32,
 }
 
 pub async fn delete_book_node(
@@ -341,13 +348,12 @@ pub async fn delete_book_node(
     let mut conn = pool.pg_pool.get().await?;
 
     // Prepare to find ids to delete
+    // Applies only for nodes where identity is 101, 102
     let mut delete_row_ids: Vec<i32> = Vec::new();
-    delete_row_ids.push(body.delete_node_id);
+    delete_row_ids.push(body.delete_id);
+
     let delete_rows = conn
-        .query(
-            "SELECT uid FROM book where page_id=$1",
-            &[&body.delete_node_id],
-        )
+        .query("SELECT uid FROM book where page_id=$1", &[&body.delete_id])
         .await?;
 
     if delete_rows.len() > 0 {
@@ -357,47 +363,47 @@ pub async fn delete_book_node(
         }
     }
 
-    if *&body.identity == 101 {
-        let delete_rows_two = conn
+    if body.identity == 101 {
+        let sub_section_nodes = conn
             .query(
                 "SELECT uid FROM book where page_id=ANY($1)",
                 &[&delete_row_ids],
             )
             .await?;
 
-        if delete_rows_two.len() > 0 {
-            for row2 in delete_rows_two.iter() {
-                let uid2 = row2.get(0);
+        if sub_section_nodes.len() > 0 {
+            for sub_section in sub_section_nodes.iter() {
+                let uid2 = sub_section.get(0);
                 delete_row_ids.push(uid2);
             }
         }
     }
     // Check if there is a node to update
-    let u = conn
+    let update_row_exist = conn
         .query_opt(
             "SELECT uid, parent_id from book where parent_id=$1 AND identity=$2",
-            &[&body.delete_node_id, &body.identity],
+            &[&body.delete_id, &body.identity],
         )
         .await?;
     let current_time = Local::now();
     let state1 = conn
         .prepare("UPDATE book set deleted_at=$1 WHERE uid=ANY($2)")
         .await?;
-    let state2 = conn
+    let update_bot_node_query = conn
         .prepare("UPDATE book SET parent_id=$1 WHERE uid=$2")
         .await?;
     let transaction = conn.transaction().await?;
-    let r = transaction
+    let num_deleted_rows = transaction
         .execute(&state1, &[&current_time, &delete_row_ids])
         .await?;
 
-    let mut rupdate_id: Option<i32> = None;
-    if let Some(update_row) = u {
+    let mut updated_id: Option<i32> = None;
+    if let Some(update_row) = update_row_exist {
         let update_id: i32 = update_row.get(0);
         transaction
-            .execute(&state2, &[&body.update_parent_id, &update_id])
+            .execute(&update_bot_node_query, &[&body.parent_id, &update_id])
             .await?;
-        rupdate_id = Some(update_id);
+        updated_id = Some(update_id);
     }
     transaction.commit().await?;
 
@@ -405,9 +411,10 @@ pub async fn delete_book_node(
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
         Json(json!({
-            "update_id": rupdate_id,
+            "updated_id": updated_id,
             "deleted_ids": delete_row_ids,
-            "deleted_rows": r
+            "parent_id": &body.parent_id,
+            "num_deleted_rows": num_deleted_rows
         })),
     ))
 }
