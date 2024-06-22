@@ -25,9 +25,11 @@ lazy_static! {
     static ref PHONE_REGEX: Regex = Regex::new(r"^\+?[1-9]\d{1,14}$").unwrap();
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Validate)]
 pub struct LoginForm {
+    #[validate(custom = "validate_username")]
     username: String,
+    #[validate(length(min = 6))]
     password: String,
 }
 
@@ -74,6 +76,7 @@ pub async fn login(
     State(pool): State<AppState>,
     Json(body): Json<LoginForm>,
 ) -> Result<impl IntoResponse, AppError> {
+    body.validate()?;
     let secret_key = std::env::var("SECRET_KEY").unwrap();
 
     let conn = pool.pg_pool.get().await?;
