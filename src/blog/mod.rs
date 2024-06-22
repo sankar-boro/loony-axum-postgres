@@ -156,17 +156,7 @@ pub async fn append_blog_node(
     State(pool): State<AppState>,
     Json(body): Json<AddBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id: i32 = match session.get("AUTH_USER_ID").await {
-        Ok(x) => match x {
-            Some(x) => x,
-            None => {
-                return Err(AppError::InternalServerError(
-                    "User session not found".to_string(),
-                ))
-            }
-        },
-        Err(e) => return Err(AppError::InternalServerError(e.to_string())),
-    };
+    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.get().await?;
 
     let update_row = conn
@@ -231,7 +221,7 @@ pub async fn append_blog_node(
                 "parent_id": &body.parent_id,
                 "title": &body.title,
                 "body": &body.body,
-                "images": &body.images,
+                "images": &images,
                 "tags": &body.tags
             },
             "update_node": {

@@ -12,10 +12,18 @@ use bcrypt::{hash, verify, DEFAULT_COST};
 use chrono::{Duration as ChronoDuration, Local};
 use cookie::{Cookie, CookieBuilder};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use time::Duration;
 use tower_sessions::Session;
+use validator::{Validate, ValidationError};
+
+lazy_static! {
+    static ref EMAIL_REGEX: Regex = Regex::new(r"^[^\s@]+@[^\s@]+\.[^\s@]+$").unwrap();
+    static ref PHONE_REGEX: Regex = Regex::new(r"^\+?[1-9]\d{1,14}$").unwrap();
+}
 
 #[derive(Deserialize, Debug)]
 pub struct LoginForm {
@@ -23,9 +31,11 @@ pub struct LoginForm {
     password: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Validate)]
 pub struct SignupForm {
+    #[validate(custom = "validate_username")]
     username: String,
+    #[validate(length(min = 6))]
     password: String,
     fname: String,
     lname: String,
@@ -47,6 +57,16 @@ struct Claims {
     nbf: Option<usize>, // Optional. Not Before (as UTC timestamp)
     sub: Option<String>, // Optional. Subject (whom token refers to)
     data: UserData,
+}
+
+fn validate_username(username: &str) -> Result<(), ValidationError> {
+    if EMAIL_REGEX.is_match(username) {
+        Ok(())
+    } else if PHONE_REGEX.is_match(username) {
+        Ok(())
+    } else {
+        return Err(ValidationError::new("Invalid username."));
+    }
 }
 
 pub async fn login(
@@ -139,6 +159,7 @@ pub async fn signup(
     State(state): State<AppState>,
     Json(body): Json<SignupForm>,
 ) -> Result<impl IntoResponse, AppError> {
+    body.validate()?;
     let conn = state.pg_pool.get().await?;
 
     let row = conn

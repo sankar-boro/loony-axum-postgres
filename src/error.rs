@@ -5,6 +5,7 @@ use axum::{
 };
 use bcrypt::BcryptError;
 use image::ImageError;
+use validator::ValidationErrors;
 
 pub enum AppError {
     // NotFound(String),
@@ -55,6 +56,15 @@ impl From<tower_sessions::session::Error> for AppError {
         AppError::InternalServerError(err.to_string())
     }
 }
+impl From<ValidationErrors> for AppError {
+    fn from(err: ValidationErrors) -> Self {
+        AppError::InternalServerError(
+            serde_json::to_string(&err.field_errors())
+                .unwrap_or("Failed to serialize ValidationErrors".to_string()),
+        )
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let body = match self {
