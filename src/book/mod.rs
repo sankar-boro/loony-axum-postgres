@@ -486,6 +486,7 @@ pub struct ChaptersByBookId {
     images: Option<String>,
     identity: i16,
     page_id: Option<i32>,
+    theme: i16,
 }
 
 #[derive(Deserialize)]
@@ -502,7 +503,7 @@ pub async fn get_book_chapters(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND identity<=101 AND deleted_at is null",
+            "SELECT uid, parent_id, title, body, images, identity, page_id, theme FROM book where book_id=$1 AND identity<=101 AND deleted_at is null",
             &[&book_info.book_id],
         )
         .await?;
@@ -517,6 +518,8 @@ pub async fn get_book_chapters(
         let images: Option<String> = rows[index].get(4);
         let identity: i16 = rows[index].get(5);
         let page_id: Option<i32> = rows[index].get(6);
+        let theme: i16 = rows[index].get(7);
+
         books.push(ChaptersByBookId {
             uid,
             parent_id,
@@ -525,6 +528,7 @@ pub async fn get_book_chapters(
             images,
             identity,
             page_id,
+            theme,
         })
     }
 
@@ -552,6 +556,7 @@ pub struct BookNodesByPageId {
     images: Option<String>,
     identity: i16,
     page_id: Option<i32>,
+    theme: i16,
 }
 
 pub async fn get_book_sections(
@@ -563,7 +568,7 @@ pub async fn get_book_sections(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND page_id=$2 AND identity=102 and deleted_at is null",
+            "SELECT uid, parent_id, title, body, images, identity, page_id, theme FROM book where book_id=$1 AND page_id=$2 AND identity=102 and deleted_at is null",
             &[&book_info.book_id, &book_info.page_id],
         )
         .await?;
@@ -578,6 +583,7 @@ pub async fn get_book_sections(
         let images: Option<String> = rows[index].get(4);
         let identity: i16 = rows[index].get(5);
         let page_id: Option<i32> = rows[index].get(6);
+        let theme: i16 = rows[index].get(7);
         books.push(BookNodesByPageId {
             uid,
             parent_id,
@@ -586,6 +592,7 @@ pub async fn get_book_sections(
             images,
             identity,
             page_id,
+            theme,
         })
     }
 
@@ -613,6 +620,7 @@ pub struct BookNodesBySectionId {
     images: Option<String>,
     identity: i16,
     page_id: Option<i32>,
+    theme: i16,
 }
 
 pub async fn get_book_sub_sections(
@@ -624,7 +632,7 @@ pub async fn get_book_sub_sections(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, identity, page_id FROM book where book_id=$1 AND page_id=$2 AND identity=103 and deleted_at is null",
+            "SELECT uid, parent_id, title, body, images, identity, page_id, theme FROM book where book_id=$1 AND page_id=$2 AND identity=103 and deleted_at is null",
             &[&book_info.book_id, &book_info.page_id],
         )
         .await?;
@@ -639,6 +647,8 @@ pub async fn get_book_sub_sections(
         let images: Option<String> = rows[index].get(4);
         let identity: i16 = rows[index].get(5);
         let page_id: Option<i32> = rows[index].get(6);
+        let theme: i16 = rows[index].get(7);
+
         books.push(BookNodesBySectionId {
             uid,
             parent_id,
@@ -647,6 +657,7 @@ pub async fn get_book_sub_sections(
             images,
             identity,
             page_id,
+            theme,
         })
     }
 
