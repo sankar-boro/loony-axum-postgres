@@ -5,7 +5,7 @@ CREATE TABLE books (
     body TEXT,
     images TEXT,
     tags TEXT,
-    metadata TEXT,
+    theme SMALLINT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL
@@ -20,8 +20,8 @@ CREATE TABLE book (
     tags TEXT,
     body TEXT,
     images TEXT,
-    identity smallINT,
-    metadata TEXT,
+    identity SMALLINT,
+    theme SMALLINT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL

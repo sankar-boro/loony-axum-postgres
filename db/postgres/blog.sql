@@ -5,7 +5,7 @@ CREATE TABLE blogs (
     body TEXT,
     images TEXT,
     tags TEXT,
-    metadata TEXT,
+    theme SMALLINT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL
@@ -19,8 +19,8 @@ CREATE TABLE blog (
     body TEXT,
     tags TEXT,
     images TEXT,
-    identity smallINT,
-    metadata TEXT,
+    identity SMALLINT,
+    theme SMALLINT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL
