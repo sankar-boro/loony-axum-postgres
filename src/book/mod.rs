@@ -131,7 +131,7 @@ pub async fn append_book_node(
 
     let has_row_update = conn
         .query_one(
-            "SELECT uid, parent_id, identity from book where parent_id=$1 AND identity=$2 AND deleted is NULL",
+            "SELECT uid, parent_id, identity from book where parent_id=$1 AND identity=$2 AND deleted_at is NULL",
             &[&body.parent_id, &body.identity],
         )
         .await;
