@@ -1,3 +1,5 @@
+pub mod edit;
+
 use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
 use crate::utils::GetUserId;
@@ -20,14 +22,6 @@ pub struct CreateBook {
     images: Vec<Images>,
     tags: Option<String>,
     theme: i16,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct EditBook {
-    book_id: i32,
-    title: String,
-    body: String,
-    images: Vec<Images>,
 }
 
 // @Create
@@ -119,6 +113,7 @@ pub struct AddBookNode {
     identity: i16,
     tags: Option<String>,
     theme: i16,
+    parent_identity: i16,
 }
 
 pub async fn append_book_node(
@@ -126,6 +121,9 @@ pub async fn append_book_node(
     State(pool): State<AppState>,
     Json(body): Json<AddBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
+    if body.parent_identity == 101 && body.identity == 103 {
+        return Err(AppError::InternalServerError(String::from("Not Allowed")));
+    }
     let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.get().await?;
 
@@ -216,98 +214,6 @@ pub async fn append_book_node(
 }
 
 // @End Create
-
-// @Edit
-pub async fn edit_book(
-    session: Session,
-    State(pool): State<AppState>,
-    Json(body): Json<EditBook>,
-) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
-    let mut conn = pool.pg_pool.get().await?;
-    let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.book_upload,
-        user_id,
-        body.book_id,
-    );
-    let state1 = conn
-        .prepare("UPDATE books SET title=$1, body=$2, images=$3 WHERE book_id=$4")
-        .await?;
-    let state2 = conn
-        .prepare("UPDATE book SET title=$1, body=$2, images=$3 WHERE book_id=$4")
-        .await?;
-    let transaction = conn.transaction().await?;
-    transaction
-        .execute(&state1, &[&body.title, &body.body, &images, &body.book_id])
-        .await?;
-    transaction
-        .execute(&state2, &[&body.title, &body.body, &images, &body.book_id])
-        .await?;
-    transaction.commit().await?;
-
-    let edit_book = json!({
-        "book_id": &body.book_id,
-        "title": &body.title.clone(),
-        "body": &body.body.clone(),
-        "book_id": &body.book_id,
-        "images": &images,
-    });
-
-    Ok((
-        StatusCode::OK,
-        [(header::CONTENT_TYPE, "application/json")],
-        Json(edit_book),
-    ))
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct EditBookNode {
-    uid: i32,
-    title: String,
-    body: String,
-    identity: i16,
-    book_id: i32,
-    images: Vec<Images>,
-}
-
-pub async fn edit_book_node(
-    session: Session,
-    State(pool): State<AppState>,
-    Json(body): Json<EditBookNode>,
-) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
-    let conn = pool.pg_pool.get().await?;
-    let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.book_upload,
-        user_id,
-        body.book_id,
-    );
-    let _ = conn
-        .execute(
-            "UPDATE book SET title=$1, body=$2, images=$3 WHERE uid=$4",
-            &[&body.title, &body.body, &images, &body.uid],
-        )
-        .await?;
-    let edit_book = json!({
-        "data": {
-            "title": &body.title.clone(),
-            "body": &body.body.clone(),
-            "images": &images,
-        }
-    });
-
-    Ok((
-        StatusCode::OK,
-        [(header::CONTENT_TYPE, "application/json")],
-        Json(edit_book),
-    ))
-}
-
-// @End Edit
 
 // @Delete
 

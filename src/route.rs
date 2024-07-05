@@ -17,7 +17,8 @@ use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
 
 use crate::book::{
-    append_book_node, create_book, delete_book, delete_book_node, edit_book, edit_book_node,
+    append_book_node, create_book, delete_book, delete_book_node,
+    edit::{edit_book, edit_book_node},
     get_all_books, get_book_chapters, get_book_sections, get_book_sub_sections,
 };
 use crate::file::{get_blog_file, get_book_file, get_tmp_file, upload_file};
