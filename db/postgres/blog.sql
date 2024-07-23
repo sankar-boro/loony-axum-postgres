@@ -19,7 +19,6 @@ CREATE TABLE blog (
     body TEXT,
     tags TEXT,
     images TEXT,
-    identity SMALLINT,
     theme SMALLINT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
