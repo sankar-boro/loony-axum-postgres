@@ -70,26 +70,26 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
 
     let blog_routes = Router::new()
         .route("/create", post(create_blog))
-        .route("/edit_blog", post(edit_blog))
-        .route("/edit_blog_node", post(edit_blog_node))
-        .route("/delete_blog", post(delete_blog))
-        .route("/delete_blog_node", post(delete_blog_node))
-        .route("/append_blog_node", post(append_blog_node))
-        .route("/get_all_blogs", get(get_all_blogs))
-        .route("/get_all_blog_nodes", get(get_all_blog_nodes));
+        .route("/edit/main", post(edit_blog))
+        .route("/edit/node", post(edit_blog_node))
+        .route("/delete", post(delete_blog))
+        .route("/delete/node", post(delete_blog_node))
+        .route("/append/node", post(append_blog_node))
+        .route("/get/all", get(get_all_blogs))
+        .route("/get/nodes", get(get_all_blog_nodes));
 
     let book_routes = Router::new()
         .route("/create", post(create_book))
-        .route("/edit_book", post(edit_book))
-        .route("/edit_book_node", post(edit_book_node))
-        .route("/delete_book", post(delete_book))
-        .route("/delete_book_node", post(delete_book_node))
-        .route("/append_book_node", post(append_book_node))
-        .route("/get_all_books", get(get_all_books))
-        .route("/get_all_book_nodes", get(get_book_chapters))
-        .route("/get_book_chapters", get(get_book_chapters))
-        .route("/get_book_sections", get(get_book_sections))
-        .route("/get_book_sub_sections", get(get_book_sub_sections));
+        .route("/edit/main", post(edit_book))
+        .route("/edit/node", post(edit_book_node))
+        .route("/delete", post(delete_book))
+        .route("/delete/node", post(delete_book_node))
+        .route("/append/node", post(append_book_node))
+        .route("/get/all", get(get_all_books))
+        .route("/get/nodes", get(get_book_chapters))
+        .route("/get/chapters", get(get_book_chapters))
+        .route("/get/sections", get(get_book_sections))
+        .route("/get/sub_sections", get(get_book_sub_sections));
 
     Router::new()
         .nest("/api/auth", auth_routes)

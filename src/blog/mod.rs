@@ -19,6 +19,7 @@ pub struct CreateBlog {
     body: String,
     images: Vec<Images>,
     tags: Option<String>,
+    theme: i16,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -26,8 +27,8 @@ pub struct EditBlog {
     blog_id: i32,
     title: String,
     body: String,
-    identity: i16,
     images: Vec<Images>,
+    theme: i16
 }
 
 #[derive(Deserialize, Serialize)]
@@ -36,6 +37,7 @@ pub struct GetBlog {
     title: String,
     body: String,
     images: String,
+    theme: i16
 }
 
 pub async fn create_blog(
@@ -49,12 +51,12 @@ pub async fn create_blog(
 
     let state1 = conn
         .prepare(
-            "INSERT INTO blogs(title, body, images, user_id, tags) VALUES($1, $2, $3, $4, $5) RETURNING blog_id"
+            "INSERT INTO blogs(title, body, images, user_id, tags, theme) VALUES($1, $2, $3, $4, $5, $6) RETURNING blog_id"
         )
         .await?;
     let state2 = conn
         .prepare(
-            "INSERT INTO blog(blog_id, title, body, images, tags) VALUES($1, $2, $3, $4, $5) RETURNING *",
+            "INSERT INTO blog(blog_id, title, body, images, tags, theme) VALUES($1, $2, $3, $4, $5, $6) RETURNING *",
         )
         .await?;
 
@@ -62,14 +64,14 @@ pub async fn create_blog(
     let row = transaction
         .query_one(
             &state1,
-            &[&body.title, &body.body, &images, &user_id, &body.tags],
+            &[&body.title, &body.body, &images, &user_id, &body.tags, &body.theme],
         )
         .await?;
     let blog_id: i32 = row.get(0);
     transaction
         .execute(
             &state2,
-            &[&blog_id, &body.title, &body.body, &images, &body.tags],
+            &[&blog_id, &body.title, &body.body, &images, &body.tags, &body.theme],
         )
         .await?;
     transaction.commit().await?;
@@ -90,7 +92,8 @@ pub async fn create_blog(
             "body": &body.body.clone(),
             "images": &images,
             "user_id": &user_id,
-            "tags": &body.tags
+            "tags": &body.tags,
+            "theme": &body.theme
         })),
     ))
 }
@@ -107,8 +110,8 @@ pub async fn edit_blog(
 
     let row = conn
         .query_one(
-            "UPDATE blogs SET title=$1, body=$2, images=$3 WHERE blog_id=$4",
-            &[&body.title, &body.body, &images, &body.blog_id],
+            "UPDATE blogs SET title=$1, body=$2, images=$3, theme=$4 WHERE blog_id=$5",
+            &[&body.title, &body.body, &images, &body.theme, &body.blog_id],
         )
         .await?;
 
@@ -116,8 +119,8 @@ pub async fn edit_blog(
 
     let _ = conn
         .query_one(
-            "UPDATE blog SET title=$1, body=$2, images=$3 WHERE blog_id=$4",
-            &[&blog_id, &body.title, &body.body, &images, &body.blog_id],
+            "UPDATE blog SET title=$1, body=$2, images=$3, theme=$4 WHERE blog_id=$5",
+            &[&blog_id, &body.title, &body.body, &images, &body.theme, &body.blog_id],
         )
         .await?;
 
@@ -126,7 +129,8 @@ pub async fn edit_blog(
         "title": &body.title.clone(),
         "body": &body.body.clone(),
         "images": &images,
-        "blog_id": &body.blog_id
+        "blog_id": &body.blog_id,
+        "theme": &body.theme
     });
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,
@@ -149,6 +153,7 @@ pub struct AddBlogNode {
     images: Vec<Images>,
     parent_id: i32,
     tags: Option<String>,
+    theme: i16
 }
 
 pub async fn append_blog_node(
@@ -169,7 +174,7 @@ pub async fn append_blog_node(
 
     let state1 = conn
         .prepare(
-            "INSERT INTO blog(blog_id, parent_id, title, body, images, tags) values($1, $2, $3, $4, $5, $6) returning uid"
+            "INSERT INTO blog(blog_id, parent_id, title, body, images, tags, theme) values($1, $2, $3, $4, $5, $6, $7) returning uid"
         )
         .await?;
 
@@ -188,6 +193,7 @@ pub async fn append_blog_node(
                 &body.body,
                 &images,
                 &body.tags,
+                &body.theme
             ],
         )
         .await?;
@@ -222,7 +228,8 @@ pub async fn append_blog_node(
                 "title": &body.title,
                 "body": &body.body,
                 "images": &images,
-                "tags": &body.tags
+                "tags": &body.tags,
+                "theme": &body.theme
             },
             "update_node": {
                 "update_row_id": update_row_uid,
@@ -309,7 +316,7 @@ pub async fn get_all_blogs(State(pool): State<AppState>) -> Result<impl IntoResp
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT blog_id, title, body, images FROM blogs where deleted_at is null",
+            "SELECT blog_id, title, body, images, theme FROM blogs where deleted_at is null",
             &[],
         )
         .await?;
@@ -321,11 +328,13 @@ pub async fn get_all_blogs(State(pool): State<AppState>) -> Result<impl IntoResp
         let title: String = rows[index].get(1);
         let body: String = rows[index].get(2);
         let images: String = rows[index].get(3);
+        let theme: i16 = rows[index].get(4);
         blogs.push(GetBlog {
             blog_id,
             title,
             body,
             images,
+            theme
         })
     }
 
@@ -345,6 +354,7 @@ pub struct BlogNode {
     title: String,
     body: String,
     images: Option<String>,
+    theme: i16
 }
 
 #[derive(Deserialize)]
@@ -361,7 +371,7 @@ pub async fn get_all_blog_nodes(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images FROM blog where blog_id=$1 and deleted_at is null",
+            "SELECT uid, parent_id, title, body, images, theme FROM blog where blog_id=$1 and deleted_at is null",
             &[&blog_info.blog_id],
         )
         .await?;
@@ -374,12 +384,14 @@ pub async fn get_all_blog_nodes(
         let title: String = rows[index].get(2);
         let body: String = rows[index].get(3);
         let images: Option<String> = rows[index].get(4);
+        let theme: i16 = rows[index].get(5);
         blogs.push(BlogNode {
             uid,
             parent_id,
             title,
             body,
             images,
+            theme
         })
     }
 
@@ -397,9 +409,9 @@ pub struct EditBlogNode {
     uid: i32,
     title: String,
     body: String,
-    identity: i16,
     blog_id: i32,
     images: Vec<Images>,
+    theme: i16
 }
 
 pub async fn edit_blog_node(
@@ -411,21 +423,13 @@ pub async fn edit_blog_node(
     let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let state1 = conn
-        .prepare("UPDATE blog SET title=$1, body=$2, images=$3 WHERE uid=$4")
-        .await?;
-    let state2 = conn
-        .prepare("UPDATE blogs SET title=$1, body=$2, images=$3 WHERE blog_id=$4")
+        .prepare("UPDATE blog SET title=$1, body=$2, images=$3, theme=$4 WHERE uid=$5")
         .await?;
     let transaction = conn.transaction().await?;
 
     transaction
-        .execute(&state1, &[&body.title, &body.body, &images, &body.uid])
+        .execute(&state1, &[&body.title, &body.body, &images, &body.theme, &body.uid])
         .await?;
-    if *&body.identity == 100 {
-        transaction
-            .execute(&state2, &[&body.title, &body.body, &images, &body.blog_id])
-            .await?;
-    }
     transaction.commit().await?;
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,
