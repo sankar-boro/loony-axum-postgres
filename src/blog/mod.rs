@@ -12,6 +12,7 @@ use chrono::Local;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_sessions::Session;
+use chrono::{DateTime, Utc};
 
 #[derive(Deserialize, Serialize)]
 pub struct CreateBlog {
@@ -312,30 +313,33 @@ pub async fn delete_blog_node(
     ))
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct GetAllBlogs {
+    blog_id: i32,
+    title: String,
+    body: String,
+    images: String,
+    created_at: DateTime<Utc>,
+}
 pub async fn get_all_blogs(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT blog_id, title, body, images, theme FROM blogs where deleted_at is null",
+            "SELECT blog_id, title, body, images, created_at FROM blogs where deleted_at is null",
             &[],
         )
         .await?;
 
-    let mut blogs: Vec<GetBlog> = Vec::new();
+    let mut blogs: Vec<GetAllBlogs> = Vec::new();
 
     for (index, _) in rows.iter().enumerate() {
-        let blog_id: i32 = rows[index].get(0);
-        let title: String = rows[index].get(1);
-        let body: String = rows[index].get(2);
-        let images: String = rows[index].get(3);
-        let theme: i16 = rows[index].get(4);
-        blogs.push(GetBlog {
-            blog_id,
-            title,
-            body,
-            images,
-            theme
-        })
+        blogs.push(GetAllBlogs {
+            blog_id:rows[index].get(0),
+            title:rows[index].get(1),
+            body:rows[index].get(2),
+            images:rows[index].get(3),
+            created_at:rows[index].get(4)
+        });
     }
 
     Ok((
@@ -358,48 +362,68 @@ pub struct BlogNode {
 }
 
 #[derive(Deserialize)]
+pub struct BlogNodesRequestById {
+    blog_id: i32,
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct BlogInfo {
     blog_id: i32,
+    user_id: i32,
+    title: String,
+    body: String,
+    images: Option<String>,
+    created_at: DateTime<Utc>,
 }
 
 pub async fn get_all_blog_nodes(
     State(pool): State<AppState>,
-    query: Query<BlogInfo>,
+    query: Query<BlogNodesRequestById>,
 ) -> Result<impl IntoResponse, AppError> {
-    let blog_info: BlogInfo = query.0;
+    let blog_request: BlogNodesRequestById = query.0;
 
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
             "SELECT uid, parent_id, title, body, images, theme FROM blog where blog_id=$1 and deleted_at is null",
-            &[&blog_info.blog_id],
+            &[&blog_request.blog_id],
+        )
+        .await?;
+    let blog_row = conn
+        .query_one(
+            "SELECT blog_id, user_id, title, body, images, created_at FROM blogs where blog_id=$1",
+            &[&blog_request.blog_id],
         )
         .await?;
 
-    let mut blogs: Vec<BlogNode> = Vec::new();
+    let blog_info = BlogInfo {
+        blog_id: blog_row.get(0),
+        user_id: blog_row.get(1),
+        title:blog_row.get(2),
+        body:blog_row.get(3),
+        images: blog_row.get(4),
+        created_at: blog_row.get(5)
+    };
+
+    let mut nodes: Vec<BlogNode> = Vec::new();
 
     for (index, _) in rows.iter().enumerate() {
-        let uid: i32 = rows[index].get(0);
-        let parent_id: Option<i32> = rows[index].get(1);
-        let title: String = rows[index].get(2);
-        let body: String = rows[index].get(3);
-        let images: Option<String> = rows[index].get(4);
-        let theme: i16 = rows[index].get(5);
-        blogs.push(BlogNode {
-            uid,
-            parent_id,
-            title,
-            body,
-            images,
-            theme
-        })
+        nodes.push(BlogNode {
+            uid:rows[index].get(0),
+            parent_id:rows[index].get(1),
+            title:rows[index].get(2),
+            body:rows[index].get(3),
+            images:rows[index].get(4),
+            theme:rows[index].get(5)
+        });
     }
 
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
         Json(json!({
-            "data": blogs
+            "nodes": nodes,
+            "blog": blog_info
         })),
     ))
 }
