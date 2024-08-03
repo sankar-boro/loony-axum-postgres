@@ -1,7 +1,7 @@
 use crate::error::AppError;
 use crate::AppState;
 use axum::{
-    extract::{Query, State},
+    extract::{Query, State, Path as AxumPath},
     http::{header, StatusCode},
     response::IntoResponse,
     Json,
@@ -9,8 +9,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use chrono::{DateTime, Utc};
-
-// @Get
 
 #[derive(Serialize)]
 pub struct GetHomeBooks {
@@ -27,6 +25,44 @@ pub async fn get_all_books(State(pool): State<AppState>) -> Result<impl IntoResp
         .query(
             "SELECT book_id, title, body, images, created_at FROM books where deleted_at is NULL",
             &[],
+        )
+        .await?;
+
+    let mut books: Vec<GetHomeBooks> = Vec::new();
+
+    for (index, _) in rows.iter().enumerate() {
+        let book_id: i32 = rows[index].get(0);
+        let title: String = rows[index].get(1);
+        let body: String = rows[index].get(2);
+        let images: String = rows[index].get(3);
+        let created_at: DateTime<Utc> = rows[index].get(4);
+        books.push(GetHomeBooks {
+            book_id,
+            title,
+            body,
+            images,
+            created_at
+        })
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "data": books
+        })),
+    ))
+}
+
+pub async fn get_all_books_by_user_id(
+    State(pool): State<AppState>,
+    AxumPath(user_id): AxumPath<i32>,
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
+    let rows = conn
+        .query(
+            "SELECT book_id, title, body, images, created_at FROM books where deleted_at is NULL and user_id=$1",
+            &[&user_id],
         )
         .await?;
 
