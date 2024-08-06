@@ -17,13 +17,20 @@ pub struct GetAllBlogs {
     body: String,
     images: String,
     created_at: DateTime<Utc>,
+    doc_type: u8
 }
-pub async fn get_all_blogs(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
+
+pub async fn get_all_blogs_by_page_no(
+    State(pool): State<AppState>,
+    AxumPath(page_no): AxumPath<i64>,
+) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
+    let limit: i64 = 2;
+    let offset: i64 = (page_no - 1) * limit;
     let rows = conn
         .query(
-            "SELECT blog_id, title, body, images, created_at FROM blogs where deleted_at is null",
-            &[],
+            "SELECT blog_id, title, body, images, created_at FROM blogs where deleted_at is null LIMIT $1 OFFSET $2",
+            &[&limit, &offset],
         )
         .await?;
 
@@ -35,7 +42,8 @@ pub async fn get_all_blogs(State(pool): State<AppState>) -> Result<impl IntoResp
             title:rows[index].get(1),
             body:rows[index].get(2),
             images:rows[index].get(3),
-            created_at:rows[index].get(4)
+            created_at:rows[index].get(4),
+            doc_type: 1
         });
     }
 
@@ -68,7 +76,8 @@ pub async fn get_all_blogs_by_user_id(
             title:rows[index].get(1),
             body:rows[index].get(2),
             images:rows[index].get(3),
-            created_at:rows[index].get(4)
+            created_at:rows[index].get(4),
+            doc_type: 1
         });
     }
 

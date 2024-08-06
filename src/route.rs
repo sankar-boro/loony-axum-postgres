@@ -2,7 +2,7 @@ use crate::{
     auth::logout,
     blog::{
         append_blog_node, create_blog, delete_blog, delete_blog_node, edit_blog, edit_blog_node,
-        get::{get_all_blogs_by_user_id,get_all_blog_nodes, get_all_blogs}
+        get::{get_all_blogs_by_user_id, get_all_blog_nodes, get_all_blogs_by_page_no}
     },
     book::test_query,
 };
@@ -20,7 +20,7 @@ use crate::book::{
     append_book_node, create_book, delete_book, delete_book_node,
     edit::{edit_book, edit_book_node},
     get::{
-        get_all_books, get_book_chapters, get_book_sections, get_book_sub_sections,
+        get_all_books_by_page_no, get_book_chapters, get_book_sections, get_book_sub_sections,
         get_all_books_by_user_id
     },
 };
@@ -78,10 +78,10 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/delete", post(delete_blog))
         .route("/delete/node", post(delete_blog_node))
         .route("/append/node", post(append_blog_node))
-        .route("/get/all", get(get_all_blogs))
         .route("/get/nodes", get(get_all_blog_nodes))
+        .route("/get/:page_no/by_page", get(get_all_blogs_by_page_no))
         .route("/get/:uid/user_blogs", get(get_all_blogs_by_user_id));
-
+        
     let book_routes = Router::new()
         .route("/create", post(create_book))
         .route("/edit/main", post(edit_book))
@@ -89,11 +89,11 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/delete", post(delete_book))
         .route("/delete/node", post(delete_book_node))
         .route("/append/node", post(append_book_node))
-        .route("/get/all", get(get_all_books))
         .route("/get/nodes", get(get_book_chapters))
         .route("/get/chapters", get(get_book_chapters))
         .route("/get/sections", get(get_book_sections))
         .route("/get/sub_sections", get(get_book_sub_sections))
+        .route("/get/:page_no/by_page", get(get_all_books_by_page_no))
         .route("/get/:uid/user_books", get(get_all_books_by_user_id));
 
     Router::new()

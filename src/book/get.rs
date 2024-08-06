@@ -17,14 +17,20 @@ pub struct GetHomeBooks {
     body: String,
     images: String,
     created_at: DateTime<Utc>,
+    doc_type: u8
 }
 
-pub async fn get_all_books(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
+pub async fn get_all_books_by_page_no(
+    State(pool): State<AppState>,
+    AxumPath(page_no): AxumPath<i64>,
+) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
+    let limit: i64 = 2;
+    let offset: i64 = (page_no - 1) * limit;
     let rows = conn
         .query(
-            "SELECT book_id, title, body, images, created_at FROM books where deleted_at is NULL",
-            &[],
+            "SELECT book_id, title, body, images, created_at FROM books where deleted_at is NULL LIMIT $1 OFFSET $2",
+            &[&limit, &offset],
         )
         .await?;
 
@@ -41,7 +47,8 @@ pub async fn get_all_books(State(pool): State<AppState>) -> Result<impl IntoResp
             title,
             body,
             images,
-            created_at
+            created_at,
+            doc_type: 2
         })
     }
 
@@ -79,7 +86,8 @@ pub async fn get_all_books_by_user_id(
             title,
             body,
             images,
-            created_at
+            created_at,
+            doc_type: 2
         })
     }
 
