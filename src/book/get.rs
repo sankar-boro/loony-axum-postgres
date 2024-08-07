@@ -11,8 +11,8 @@ use serde_json::json;
 use chrono::{DateTime, Utc};
 
 #[derive(Serialize)]
-pub struct GetHomeBooks {
-    book_id: i32,
+pub struct HomeBooksResponse {
+    uid: i32,
     title: String,
     body: String,
     images: String,
@@ -29,21 +29,21 @@ pub async fn get_all_books_by_page_no(
     let offset: i64 = (page_no - 1) * limit;
     let rows = conn
         .query(
-            "SELECT book_id, title, body, images, created_at FROM books where deleted_at is NULL LIMIT $1 OFFSET $2",
+            "SELECT uid, title, body, images, created_at FROM books where deleted_at is NULL LIMIT $1 OFFSET $2",
             &[&limit, &offset],
         )
         .await?;
 
-    let mut books: Vec<GetHomeBooks> = Vec::new();
+    let mut books: Vec<HomeBooksResponse> = Vec::new();
 
     for (index, _) in rows.iter().enumerate() {
-        let book_id: i32 = rows[index].get(0);
+        let uid: i32 = rows[index].get(0);
         let title: String = rows[index].get(1);
         let body: String = rows[index].get(2);
         let images: String = rows[index].get(3);
         let created_at: DateTime<Utc> = rows[index].get(4);
-        books.push(GetHomeBooks {
-            book_id,
+        books.push(HomeBooksResponse {
+            uid,
             title,
             body,
             images,
@@ -68,21 +68,21 @@ pub async fn get_all_books_by_user_id(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT book_id, title, body, images, created_at FROM books where deleted_at is NULL and user_id=$1",
+            "SELECT uid, title, body, images, created_at FROM books where deleted_at is NULL and user_id=$1",
             &[&user_id],
         )
         .await?;
 
-    let mut books: Vec<GetHomeBooks> = Vec::new();
+    let mut books: Vec<HomeBooksResponse> = Vec::new();
 
     for (index, _) in rows.iter().enumerate() {
-        let book_id: i32 = rows[index].get(0);
+        let uid: i32 = rows[index].get(0);
         let title: String = rows[index].get(1);
         let body: String = rows[index].get(2);
         let images: String = rows[index].get(3);
         let created_at: DateTime<Utc> = rows[index].get(4);
-        books.push(GetHomeBooks {
-            book_id,
+        books.push(HomeBooksResponse {
+            uid,
             title,
             body,
             images,
@@ -142,7 +142,7 @@ pub async fn get_book_chapters(
         .await?;
     let book_row = conn
         .query_one(
-            "SELECT book_id, user_id, title, body, images, created_at FROM books where book_id=$1",
+            "SELECT uid, user_id, title, body, images, created_at FROM books where book_id=$1",
             &[&book_request.book_id],
         )
         .await?;

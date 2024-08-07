@@ -27,16 +27,16 @@ lazy_static! {
 
 #[derive(Deserialize, Debug, Validate)]
 pub struct LoginForm {
-    #[validate(custom = "validate_username")]
-    username: String,
+    #[validate(custom = "validate_email")]
+    email: String,
     #[validate(length(min = 6))]
     password: String,
 }
 
 #[derive(Deserialize, Debug, Validate)]
 pub struct SignupForm {
-    #[validate(custom = "validate_username")]
-    username: String,
+    #[validate(custom = "validate_email")]
+    email: String,
     #[validate(length(min = 6))]
     password: String,
     fname: String,
@@ -45,7 +45,7 @@ pub struct SignupForm {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct UserData {
-    user_id: i32,
+    uid: i32,
     fname: String,
     lname: String,
 }
@@ -61,13 +61,13 @@ struct Claims {
     data: UserData,
 }
 
-fn validate_username(username: &str) -> Result<(), ValidationError> {
-    if EMAIL_REGEX.is_match(username) {
+fn validate_email(email: &str) -> Result<(), ValidationError> {
+    if EMAIL_REGEX.is_match(email) {
         Ok(())
-    } else if PHONE_REGEX.is_match(username) {
+    } else if PHONE_REGEX.is_match(email) {
         Ok(())
     } else {
-        return Err(ValidationError::new("Invalid username."));
+        return Err(ValidationError::new("Invalid email."));
     }
 }
 
@@ -82,8 +82,8 @@ pub async fn login(
     let conn = pool.pg_pool.get().await?;
     let row = conn
         .query_opt(
-            "select user_id, fname, lname, password from users where username=$1",
-            &[&body.username],
+            "select uid, fname, lname, password from users where email=$1",
+            &[&body.email],
         )
         .await?;
 
@@ -93,7 +93,7 @@ pub async fn login(
 
     let row = row.unwrap();
 
-    let user_id: i32 = row.get(0);
+    let uid: i32 = row.get(0);
     let fname: String = row.get(1);
     let lname: String = row.get(2);
     let password: String = row.get(3);
@@ -107,8 +107,8 @@ pub async fn login(
     }
 
     let user_response = json!({
-        "user_id": user_id,
-        "username": &body.username.clone(),
+        "uid": uid,
+        "email": &body.email.clone(),
         "fname": fname.clone(),
         "lname": lname.clone(),
     });
@@ -119,7 +119,7 @@ pub async fn login(
         data: UserData {
             fname: fname.clone(),
             lname: lname.clone(),
-            user_id: user_id,
+            uid: uid,
         },
         exp: expiration_time.timestamp() as usize,
         aud: None,
@@ -148,7 +148,7 @@ pub async fn login(
     session
         .insert("AUTH_USER", &serde_json::to_string(&user_response).unwrap())
         .await?;
-    session.insert("AUTH_USER_ID", user_id).await?;
+    session.insert("AUTH_USER_ID", uid).await?;
 
     Ok((
         StatusCode::OK,
@@ -167,8 +167,8 @@ pub async fn signup(
 
     let row = conn
         .query_opt(
-            "select username from users where username=$1",
-            &[&body.username],
+            "select email from users where email=$1",
+            &[&body.email],
         )
         .await?;
 
@@ -179,13 +179,13 @@ pub async fn signup(
     let hashed_password = hash(&body.password, DEFAULT_COST)?;
     conn
         .execute(
-            "INSERT INTO users(username, password, fname, lname) values($1, $2, $3, $4) RETURNING user_id",
-            &[&body.username, &hashed_password, &body.fname, &body.lname],
+            "INSERT INTO users(email, password, fname, lname) values($1, $2, $3, $4) RETURNING uid",
+            &[&body.email, &hashed_password, &body.fname, &body.lname],
         )
         .await?;
 
     let user_response = json!({
-        "username": &body.username.clone(),
+        "email": &body.email.clone(),
         "fname": &body.fname.clone(),
         "lname": &body.lname.clone(),
     });

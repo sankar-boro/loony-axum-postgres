@@ -1,9 +1,11 @@
 CREATE TABLE users (
-    user_id serial PRIMARY KEY NOT NULL,
-    fname TEXT,
+    uid serial PRIMARY KEY NOT NULL,
+    fname VARCHAR(25) NOT NULL,
     lname TEXT,
-    username TEXT,
-    password TEXT,
+    images TEXT,
+    email VARCHAR(50) UNIQUE NOT NULL,
+    phone VARCHAR(15),
+    password VARCHAR(260),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE

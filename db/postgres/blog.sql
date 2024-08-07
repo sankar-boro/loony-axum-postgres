@@ -1,5 +1,5 @@
 CREATE TABLE blogs (
-    blog_id serial PRIMARY KEY NOT NULL,
+    uid serial PRIMARY KEY NOT NULL,
     user_id INT,
     title TEXT,
     body TEXT,

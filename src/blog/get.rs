@@ -12,7 +12,7 @@ use chrono::{DateTime, Utc};
 
 #[derive(Deserialize, Serialize)]
 pub struct GetAllBlogs {
-    blog_id: i32,
+    uid: i32,
     title: String,
     body: String,
     images: String,
@@ -29,7 +29,7 @@ pub async fn get_all_blogs_by_page_no(
     let offset: i64 = (page_no - 1) * limit;
     let rows = conn
         .query(
-            "SELECT blog_id, title, body, images, created_at FROM blogs where deleted_at is null LIMIT $1 OFFSET $2",
+            "SELECT uid, title, body, images, created_at FROM blogs where deleted_at is null LIMIT $1 OFFSET $2",
             &[&limit, &offset],
         )
         .await?;
@@ -38,7 +38,7 @@ pub async fn get_all_blogs_by_page_no(
 
     for (index, _) in rows.iter().enumerate() {
         blogs.push(GetAllBlogs {
-            blog_id:rows[index].get(0),
+            uid:rows[index].get(0),
             title:rows[index].get(1),
             body:rows[index].get(2),
             images:rows[index].get(3),
@@ -63,7 +63,7 @@ pub async fn get_all_blogs_by_user_id(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT blog_id, title, body, images, created_at FROM blogs where deleted_at is null and user_id=$1",
+            "SELECT uid, title, body, images, created_at FROM blogs where deleted_at is null and user_id=$1",
             &[&user_id],
         )
         .await?;
@@ -72,7 +72,7 @@ pub async fn get_all_blogs_by_user_id(
 
     for (index, _) in rows.iter().enumerate() {
         blogs.push(GetAllBlogs {
-            blog_id:rows[index].get(0),
+            uid:rows[index].get(0),
             title:rows[index].get(1),
             body:rows[index].get(2),
             images:rows[index].get(3),
@@ -93,6 +93,7 @@ pub async fn get_all_blogs_by_user_id(
 #[derive(Deserialize, Serialize)]
 pub struct BlogNode {
     uid: i32,
+    blog_id: i32,
     parent_id: Option<i32>,
     title: String,
     body: String,
@@ -107,7 +108,7 @@ pub struct BlogNodesRequestById {
 
 #[derive(Deserialize, Serialize)]
 pub struct BlogInfo {
-    blog_id: i32,
+    uid: i32,
     user_id: i32,
     title: String,
     body: String,
@@ -130,13 +131,13 @@ pub async fn get_all_blog_nodes(
         .await?;
     let blog_row = conn
         .query_one(
-            "SELECT blog_id, user_id, title, body, images, created_at FROM blogs where blog_id=$1",
+            "SELECT uid, user_id, title, body, images, created_at FROM blogs where uid=$1",
             &[&blog_request.blog_id],
         )
         .await?;
 
     let blog_info = BlogInfo {
-        blog_id: blog_row.get(0),
+        uid: blog_row.get(0),
         user_id: blog_row.get(1),
         title:blog_row.get(2),
         body:blog_row.get(3),
@@ -149,6 +150,7 @@ pub async fn get_all_blog_nodes(
     for (index, _) in rows.iter().enumerate() {
         nodes.push(BlogNode {
             uid:rows[index].get(0),
+            blog_id: blog_row.get(0),
             parent_id:rows[index].get(1),
             title:rows[index].get(2),
             body:rows[index].get(3),

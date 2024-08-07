@@ -21,7 +21,7 @@ pub struct CreateBook {
     title: String,
     body: String,
     images: Vec<Images>,
-    tags: Option<String>,
+    tags: Option<Vec<String>>,
     theme: i16,
 }
 
@@ -39,11 +39,19 @@ pub async fn create_book(
     let mut conn = pool.pg_pool.get().await?;
 
     let state1 = conn
-        .prepare("INSERT INTO books(title, body, images, user_id, tags, theme) VALUES($1, $2, $3, $4, $5, $6) RETURNING book_id")
+        .prepare("INSERT INTO books(title, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5) RETURNING uid")
         .await?;
     let state2 = conn
-        .prepare("INSERT INTO book(book_id, title, identity, body, images, user_id, tags, theme) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *")
+        .prepare("INSERT INTO book(book_id, title, identity, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING uid")
         .await?;
+
+    let mut state3: Option<String> = None;
+    if let Some(tags) = &body.tags {
+        state3 = Some(format!("INSERT INTO tags(name) VALUES {} ON CONFLICT (name) DO NOTHING", tags.iter()
+        .map(|s| format!("('{}')", s))
+        .collect::<Vec<String>>()
+        .join(", ")));
+    } 
     let transaction = conn.transaction().await?;
 
     let row = transaction
@@ -54,7 +62,6 @@ pub async fn create_book(
                 &body.body,
                 &images,
                 &user_id,
-                &body.tags,
                 &body.theme,
             ],
         )
@@ -62,6 +69,12 @@ pub async fn create_book(
 
     let book_id: i32 = row.get(0);
 
+    if let Some(state3) = state3 {
+        transaction
+        .execute(&state3,&[])
+        .await?;
+    }
+    
     transaction
         .execute(
             &state2,
@@ -72,7 +85,6 @@ pub async fn create_book(
                 &body.body,
                 &images,
                 &user_id,
-                &body.tags,
                 &body.theme,
             ],
         )
