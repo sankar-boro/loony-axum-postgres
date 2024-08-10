@@ -1,14 +1,14 @@
 use crate::error::AppError;
 use crate::AppState;
 use axum::{
-    extract::{Query, State, Path as AxumPath},
+    extract::{Path as AxumPath, Query, State},
     http::{header, StatusCode},
     response::IntoResponse,
     Json,
 };
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use chrono::{DateTime, Utc};
 
 #[derive(Serialize)]
 pub struct HomeBooksResponse {
@@ -17,7 +17,7 @@ pub struct HomeBooksResponse {
     body: String,
     images: String,
     created_at: DateTime<Utc>,
-    doc_type: u8
+    doc_type: u8,
 }
 
 pub async fn get_all_books_by_page_no(
@@ -29,7 +29,7 @@ pub async fn get_all_books_by_page_no(
     let offset: i64 = (page_no - 1) * limit;
     let rows = conn
         .query(
-            "SELECT uid, title, body, images, created_at FROM books where deleted_at is NULL LIMIT $1 OFFSET $2",
+            "SELECT uid, title, body, images, created_at FROM books where deleted_at is NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2",
             &[&limit, &offset],
         )
         .await?;
@@ -48,7 +48,7 @@ pub async fn get_all_books_by_page_no(
             body,
             images,
             created_at,
-            doc_type: 2
+            doc_type: 2,
         })
     }
 
@@ -87,7 +87,7 @@ pub async fn get_all_books_by_user_id(
             body,
             images,
             created_at,
-            doc_type: 2
+            doc_type: 2,
         })
     }
 
@@ -142,21 +142,20 @@ pub async fn get_book_chapters(
         .await?;
     let book_row = conn
         .query_one(
-            "SELECT uid, user_id, title, body, images, created_at FROM books where book_id=$1",
+            "SELECT uid, user_id, title, body, images, created_at FROM books where uid=$1",
             &[&book_request.book_id],
         )
         .await?;
 
-        
     let book_info = BookInfo {
         book_id: book_row.get(0),
         user_id: book_row.get(1),
-        title:book_row.get(2),
-        body:book_row.get(3),
+        title: book_row.get(2),
+        body: book_row.get(3),
         images: book_row.get(4),
-        created_at: book_row.get(5)
+        created_at: book_row.get(5),
     };
-    
+
     let mut books: Vec<ChaptersByBookId> = Vec::new();
     for (index, _) in rows.iter().enumerate() {
         books.push(ChaptersByBookId {
@@ -165,9 +164,9 @@ pub async fn get_book_chapters(
             title: rows[index].get(2),
             body: rows[index].get(3),
             images: rows[index].get(4),
-            identity:rows[index].get(5),
+            identity: rows[index].get(5),
             page_id: rows[index].get(6),
-            theme:rows[index].get(7)
+            theme: rows[index].get(7),
         });
     }
 

@@ -38,46 +38,74 @@ pub async fn create_book(
 
     let mut conn = pool.pg_pool.get().await?;
 
-    let state1 = conn
+    let insert_books_query = conn
         .prepare("INSERT INTO books(title, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5) RETURNING uid")
         .await?;
-    let state2 = conn
+    let insert_book_query = conn
         .prepare("INSERT INTO book(book_id, title, identity, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING uid")
         .await?;
-
-    let mut state3: Option<String> = None;
+    let mut insert_tags_query: Option<String> = None;
     if let Some(tags) = &body.tags {
-        state3 = Some(format!("INSERT INTO tags(name) VALUES {} ON CONFLICT (name) DO NOTHING", tags.iter()
-        .map(|s| format!("('{}')", s))
-        .collect::<Vec<String>>()
-        .join(", ")));
-    } 
+        insert_tags_query = Some(format!(
+            "WITH ins AS (
+                INSERT INTO tags (name)
+                VALUES {}
+                ON CONFLICT (name) DO NOTHING
+                RETURNING uid, name
+            )
+            SELECT uid, name FROM ins
+            UNION ALL
+            SELECT uid, name FROM tags WHERE name IN ({}) AND NOT EXISTS (SELECT uid, name FROM ins)",
+            tags.iter()
+                .map(|s| format!("('{}')", s))
+                .collect::<Vec<String>>()
+                .join(", "),
+                tags.iter()
+                .map(|s| format!("'{}'", s))
+                .collect::<Vec<String>>()
+                .join(", ")
+        ));
+    }
     let transaction = conn.transaction().await?;
 
     let row = transaction
         .query_one(
-            &state1,
-            &[
-                &body.title,
-                &body.body,
-                &images,
-                &user_id,
-                &body.theme,
-            ],
+            &insert_books_query,
+            &[&body.title, &body.body, &images, &user_id, &body.theme],
         )
         .await?;
 
     let book_id: i32 = row.get(0);
 
-    if let Some(state3) = state3 {
-        transaction
-        .execute(&state3,&[])
-        .await?;
+    if let Some(insert_tags_query) = insert_tags_query {
+        let res = transaction.query(&insert_tags_query, &[]).await?;
+        let mut tag_rows: Vec<(i32, i32, i32)> = Vec::new();
+        for row in res.iter() {
+            tag_rows.push((row.get(0), book_id, user_id));
+        }
+        let book_tag_query = format!(
+            "INSERT INTO book_tags(tag_id, book_id) VALUES {} RETURNING uid",
+            tag_rows
+                .iter()
+                .map(|(tid, bid, _)| format!("('{}', '{}')", tid, bid))
+                .collect::<Vec<String>>()
+                .join(", "),
+        );
+        let user_tag_query = format!(
+            "INSERT INTO user_tags(tag_id, user_id) VALUES {} RETURNING uid",
+            tag_rows
+                .iter()
+                .map(|(tid, _, uid)| format!("('{}', '{}')", tid, uid))
+                .collect::<Vec<String>>()
+                .join(", "),
+        );
+        transaction.execute(&book_tag_query, &[]).await?;
+        transaction.execute(&user_tag_query, &[]).await?;
     }
-    
+
     transaction
         .execute(
-            &state2,
+            &insert_book_query,
             &[
                 &book_id,
                 &body.title,
@@ -151,7 +179,7 @@ pub async fn append_book_node(
 
     let state1 = conn
     .prepare(
-        "INSERT INTO book(book_id, page_id, parent_id, title, body, identity, images, tags, theme) values($1, $2, $3, $4, $5, $6, $7, $8, $9) returning uid",
+        "INSERT INTO book(book_id, page_id, parent_id, title, body, identity, images, theme) values($1, $2, $3, $4, $5, $6, $7, $8) returning uid",
     )
     .await?;
     let state2 = conn
@@ -170,7 +198,6 @@ pub async fn append_book_node(
                 &body.body,
                 &body.identity,
                 &images,
-                &body.tags,
                 &body.theme,
             ],
         )
@@ -218,7 +245,6 @@ pub async fn append_book_node(
                 "images": &images,
                 "identity": &body.identity,
                 "page_id": &body.page_id,
-                "tags": &body.tags,
                 "theme": &body.theme
             },
             "update_node": update_node
@@ -352,7 +378,6 @@ pub async fn delete_book_node(
 }
 
 // @End Delete
-
 
 pub async fn test_query(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;

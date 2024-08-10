@@ -4,20 +4,23 @@ DROP TABLE user_tags;
 
 CREATE TABLE tags (
     uid serial PRIMARY KEY,
-    name VARCHAR(50) UNIQUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    name VARCHAR(50) UNIQUE NOT NULL
 );
 
-CREATE TABLE document_tags (
+CREATE TABLE book_tags (
     uid serial PRIMARY KEY,
     tag_id INT NOT NULL,
-    doc_id INT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    book_id INT NOT NULL
+);
+
+CREATE TABLE blog_tags (
+    uid serial PRIMARY KEY,
+    tag_id INT NOT NULL,
+    blog_id INT NOT NULL
 );
 
 CREATE TABLE user_tags (
     uid serial PRIMARY KEY,
     tag_id INT NOT NULL,
-    user_id INT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    user_id INT NOT NULL
 );
