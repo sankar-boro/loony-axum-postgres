@@ -20,7 +20,7 @@ pub struct CreateBlog {
     title: String,
     body: String,
     images: Vec<Images>,
-    tags: Option<String>,
+    tags: Option<Vec<String>>,
     theme: i16,
 }
 
@@ -30,7 +30,7 @@ pub struct EditBlog {
     title: String,
     body: String,
     images: Vec<Images>,
-    theme: i16
+    theme: i16,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -39,7 +39,7 @@ pub struct GetBlog {
     title: String,
     body: String,
     images: String,
-    theme: i16
+    theme: i16,
 }
 
 pub async fn create_blog(
@@ -53,27 +53,77 @@ pub async fn create_blog(
 
     let state1 = conn
         .prepare(
-            "INSERT INTO blogs(title, body, images, user_id, tags, theme) VALUES($1, $2, $3, $4, $5, $6) RETURNING blog_id"
+            "INSERT INTO blogs(title, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5) RETURNING uid"
         )
         .await?;
     let state2 = conn
         .prepare(
-            "INSERT INTO blog(blog_id, title, body, images, tags, theme) VALUES($1, $2, $3, $4, $5, $6) RETURNING *",
+            "INSERT INTO blog(uid, title, body, images, theme) VALUES($1, $2, $3, $4, $5) RETURNING *",
         )
         .await?;
+
+    let mut insert_tags_query: Option<String> = None;
+    if let Some(tags) = &body.tags {
+        insert_tags_query = Some(format!(
+            "WITH ins AS (
+                INSERT INTO tags (name)
+                VALUES {}
+                ON CONFLICT (name) DO NOTHING
+                RETURNING uid, name
+            )
+            SELECT uid, name FROM ins
+            UNION ALL
+            SELECT uid, name FROM tags WHERE name IN ({}) AND NOT EXISTS (SELECT uid, name FROM ins)",
+            tags.iter()
+                .map(|s| format!("('{}')", s))
+                .collect::<Vec<String>>()
+                .join(", "),
+                tags.iter()
+                .map(|s| format!("'{}'", s))
+                .collect::<Vec<String>>()
+                .join(", ")
+        ));
+    }
 
     let transaction = conn.transaction().await?;
     let row = transaction
         .query_one(
             &state1,
-            &[&body.title, &body.body, &images, &user_id, &body.tags, &body.theme],
+            &[&body.title, &body.body, &images, &user_id, &body.theme],
         )
         .await?;
     let blog_id: i32 = row.get(0);
+
+    if let Some(insert_tags_query) = insert_tags_query {
+        let res = transaction.query(&insert_tags_query, &[]).await?;
+        let mut tag_rows: Vec<(i32, i32, i32)> = Vec::new();
+        for row in res.iter() {
+            tag_rows.push((row.get(0), blog_id, user_id));
+        }
+        let blog_tag_query = format!(
+            "INSERT INTO blog_tags(tag_id, blog_id) VALUES {} RETURNING uid",
+            tag_rows
+                .iter()
+                .map(|(tid, bid, _)| format!("('{}', '{}')", tid, bid))
+                .collect::<Vec<String>>()
+                .join(", "),
+        );
+        let user_tag_query = format!(
+            "INSERT INTO user_tags(tag_id, user_id) VALUES {} RETURNING uid",
+            tag_rows
+                .iter()
+                .map(|(tid, _, uid)| format!("('{}', '{}')", tid, uid))
+                .collect::<Vec<String>>()
+                .join(", "),
+        );
+        transaction.execute(&blog_tag_query, &[]).await?;
+        transaction.execute(&user_tag_query, &[]).await?;
+    }
+
     transaction
         .execute(
             &state2,
-            &[&blog_id, &body.title, &body.body, &images, &body.tags, &body.theme],
+            &[&blog_id, &body.title, &body.body, &images, &body.theme],
         )
         .await?;
     transaction.commit().await?;
@@ -122,7 +172,14 @@ pub async fn edit_blog(
     let _ = conn
         .query_one(
             "UPDATE blog SET title=$1, body=$2, images=$3, theme=$4 WHERE blog_id=$5",
-            &[&blog_id, &body.title, &body.body, &images, &body.theme, &body.blog_id],
+            &[
+                &blog_id,
+                &body.title,
+                &body.body,
+                &images,
+                &body.theme,
+                &body.blog_id,
+            ],
         )
         .await?;
 
@@ -155,7 +212,7 @@ pub struct AddBlogNode {
     images: Vec<Images>,
     parent_id: i32,
     tags: Option<String>,
-    theme: i16
+    theme: i16,
 }
 
 pub async fn append_blog_node(
@@ -195,7 +252,7 @@ pub async fn append_blog_node(
                 &body.body,
                 &images,
                 &body.tags,
-                &body.theme
+                &body.theme,
             ],
         )
         .await?;
@@ -314,7 +371,6 @@ pub async fn delete_blog_node(
     ))
 }
 
-
 #[derive(Deserialize, Serialize)]
 pub struct EditBlogNode {
     uid: i32,
@@ -322,7 +378,7 @@ pub struct EditBlogNode {
     body: String,
     blog_id: i32,
     images: Vec<Images>,
-    theme: i16
+    theme: i16,
 }
 
 pub async fn edit_blog_node(
@@ -339,7 +395,10 @@ pub async fn edit_blog_node(
     let transaction = conn.transaction().await?;
 
     transaction
-        .execute(&state1, &[&body.title, &body.body, &images, &body.theme, &body.uid])
+        .execute(
+            &state1,
+            &[&body.title, &body.body, &images, &body.theme, &body.uid],
+        )
         .await?;
     transaction.commit().await?;
     let _ = &body.images.move_images(
