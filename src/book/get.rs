@@ -310,3 +310,46 @@ pub async fn get_book_sub_sections(
 }
 
 // @End Get
+
+pub async fn get_all_books_liked_by_user(
+    State(pool): State<AppState>,
+    AxumPath(user_id): AxumPath<i32>,
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
+    let user_tags_query = "SELECT tag_id FROM user_tags where user_id=$1";
+    let book_ids_user_tags_query = "SELECT book_id FROM book_tags where tag_id=ANY($1)";
+    let book_ids_query = "SELECT uid, title, body, images, created_at FROM books where uid=ANY($1)";
+
+    let mut tag_ids: Vec<i32> = Vec::new();
+    let rows = conn.query(user_tags_query, &[&user_id]).await?;
+    for row in rows.iter() {
+        tag_ids.push(row.get(0));
+    }
+
+    let mut book_ids: Vec<i32> = Vec::new();
+    let rows = conn.query(book_ids_user_tags_query, &[&tag_ids]).await?;
+    for row in rows.iter() {
+        book_ids.push(row.get(0));
+    }
+
+    let mut books: Vec<HomeBooksResponse> = Vec::new();
+    let rows = conn.query(book_ids_query, &[&book_ids]).await?;
+    for row in rows.iter() {
+        books.push(HomeBooksResponse {
+            uid: row.get(0),
+            title: row.get(1),
+            body: row.get(2),
+            images: row.get(3),
+            created_at: row.get(4),
+            doc_type: 2,
+        });
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "data": books
+        })),
+    ))
+}

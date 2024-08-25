@@ -5,6 +5,7 @@ mod error;
 mod file;
 #[macro_use]
 mod query;
+mod likes;
 mod route;
 mod traits;
 mod types;

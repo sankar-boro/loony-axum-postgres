@@ -2,12 +2,16 @@ use crate::{
     auth::logout,
     blog::{
         append_blog_node, create_blog, delete_blog, delete_blog_node, edit_blog, edit_blog_node,
-        get::{get_all_blogs_by_user_id, get_all_blog_nodes, get_all_blogs_by_page_no}
+        get::{
+            get_all_blog_nodes, get_all_blogs_by_page_no, get_all_blogs_by_user_id,
+            get_all_blogs_liked_by_user,
+        },
     },
-    book::test_query,
+    book::{get::get_all_books_liked_by_user, test_query},
+    likes::tag::get_all_tags_user_can_follow,
 };
 use axum::{
-    extract::{DefaultBodyLimit},
+    extract::DefaultBodyLimit,
     http::{header, StatusCode},
     response::IntoResponse,
     routing::{get, post},
@@ -20,8 +24,8 @@ use crate::book::{
     append_book_node, create_book, delete_book, delete_book_node,
     edit::{edit_book, edit_book_node},
     get::{
-        get_all_books_by_page_no, get_book_chapters, get_book_sections, get_book_sub_sections,
-        get_all_books_by_user_id
+        get_all_books_by_page_no, get_all_books_by_user_id, get_book_chapters, get_book_sections,
+        get_book_sub_sections,
     },
 };
 use crate::file::{get_blog_file, get_book_file, get_tmp_file, upload_file};
@@ -80,8 +84,12 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/append/node", post(append_blog_node))
         .route("/get/nodes", get(get_all_blog_nodes))
         .route("/get/:page_no/by_page", get(get_all_blogs_by_page_no))
+        .route(
+            "/get/:user_id/get_all_blogs_liked_by_user",
+            get(get_all_blogs_liked_by_user),
+        )
         .route("/get/:uid/user_blogs", get(get_all_blogs_by_user_id));
-        
+
     let book_routes = Router::new()
         .route("/create", post(create_book))
         .route("/edit/main", post(edit_book))
@@ -93,13 +101,23 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/get/chapters", get(get_book_chapters))
         .route("/get/sections", get(get_book_sections))
         .route("/get/sub_sections", get(get_book_sub_sections))
+        .route(
+            "/get/:user_id/get_all_books_liked_by_user",
+            get(get_all_books_liked_by_user),
+        )
         .route("/get/:page_no/by_page", get(get_all_books_by_page_no))
         .route("/get/:uid/user_books", get(get_all_books_by_user_id));
+
+    let tag_routes = Router::new().route(
+        "/:user_id/get_all_tags_user_can_follow",
+        get(get_all_tags_user_can_follow),
+    );
 
     Router::new()
         .nest("/api/auth", auth_routes)
         .nest("/api/blog", blog_routes)
         .nest("/api/book", book_routes)
+        .nest("/api/tag", tag_routes)
         .route("/api/upload_file", post(upload_file))
         .route("/api/blog/:uid/:size/:filename", get(get_blog_file))
         .route("/api/book/:uid/:size/:filename", get(get_book_file))
