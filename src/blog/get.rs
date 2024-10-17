@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct GetAllBlogs {
     uid: i32,
     title: String,
@@ -46,6 +46,7 @@ pub async fn get_all_blogs_by_page_no(
             doc_type: 1,
         });
     }
+    log::info!("{:?}", blogs);
 
     Ok((
         StatusCode::OK,
@@ -90,7 +91,7 @@ pub async fn get_all_blogs_by_user_id(
     ))
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct BlogNode {
     uid: i32,
     blog_id: i32,
@@ -106,7 +107,7 @@ pub struct BlogNodesRequestById {
     blog_id: i32,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct BlogInfo {
     uid: i32,
     user_id: i32,
@@ -158,6 +159,7 @@ pub async fn get_all_blog_nodes(
             theme: rows[index].get(5),
         });
     }
+    log::info!("{:?}", nodes);
 
     Ok((
         StatusCode::OK,

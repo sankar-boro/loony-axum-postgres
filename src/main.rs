@@ -17,9 +17,10 @@ use axum::http::{
 };
 use bb8::Pool;
 use bb8_postgres::{bb8, PostgresConnectionManager};
+use log4rs;
 use tokio_postgres::NoTls;
 use tower_http::cors::CorsLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+// use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
 #[allow(dead_code)]
@@ -66,17 +67,18 @@ async fn create_connection() -> AppState {
 
 #[tokio::main]
 async fn main() {
+    log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
     let host = std::env::var("HOST").unwrap();
     let port = std::env::var("PORT").unwrap();
     let allow_origin = std::env::var("ALLOW_ORIGIN").unwrap();
 
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_tokio_postgres=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // tracing_subscriber::registry()
+    //     .with(
+    //         tracing_subscriber::EnvFilter::try_from_default_env()
+    //             .unwrap_or_else(|_| "example_tokio_postgres=debug".into()),
+    //     )
+    //     .with(tracing_subscriber::fmt::layer())
+    //     .init();
 
     let connection = create_connection().await;
 
@@ -92,6 +94,7 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(format!("{host}:{port}"))
         .await
         .unwrap();
-    tracing::info!("listening on {}", listener.local_addr().unwrap());
+    // tracing::info!("listening on {}", listener.local_addr().unwrap());
+    log::info!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, router).await.unwrap();
 }

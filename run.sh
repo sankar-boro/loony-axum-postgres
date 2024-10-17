@@ -44,4 +44,4 @@ TMP_UPLOADS="$TMP_UPLOADS" \
 BLOG_UPLOADS="$BLOG_UPLOADS" \
 BOOK_UPLOADS="$BOOK_UPLOADS" \
 USER_UPLOADS="$USER_UPLOADS" \
-./target/release/loony
+./target/release/loony_axum_postgres

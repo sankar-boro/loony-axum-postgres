@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct HomeBooksResponse {
     uid: i32,
     title: String,
@@ -51,7 +51,7 @@ pub async fn get_all_books_by_page_no(
             doc_type: 2,
         })
     }
-
+    log::info!("{:?}", books);
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
@@ -100,7 +100,7 @@ pub async fn get_all_books_by_user_id(
     ))
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ChaptersByBookId {
     uid: i32,
     parent_id: Option<i32>,
@@ -169,7 +169,7 @@ pub async fn get_book_chapters(
             theme: rows[index].get(7),
         });
     }
-
+    log::info!("{:?}", books);
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
@@ -186,7 +186,7 @@ pub struct BookByPageId {
     page_id: i32,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct BookNodesByPageId {
     uid: i32,
     parent_id: Option<i32>,
@@ -234,6 +234,8 @@ pub async fn get_book_sections(
             theme,
         })
     }
+
+    log::info!("{:?}", books);
 
     Ok((
         StatusCode::OK,

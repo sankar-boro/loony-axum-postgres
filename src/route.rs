@@ -8,7 +8,10 @@ use crate::{
         },
     },
     book::{get::get_all_books_liked_by_user, test_query},
-    likes::tag::get_all_tags_user_can_follow,
+    likes::tag::{
+        get_all_tags_user_can_follow, get_all_tags_user_has_followed, user_followed_a_tag,
+        user_removed_a_followed_tag,
+    },
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -108,10 +111,20 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/get/:page_no/by_page", get(get_all_books_by_page_no))
         .route("/get/:uid/user_books", get(get_all_books_by_user_id));
 
-    let tag_routes = Router::new().route(
-        "/:user_id/get_all_tags_user_can_follow",
-        get(get_all_tags_user_can_follow),
-    );
+    let tag_routes = Router::new()
+        .route(
+            "/:user_id/get_all_tags_user_can_follow",
+            get(get_all_tags_user_can_follow),
+        )
+        .route(
+            "/:user_id/get_all_tags_user_has_followed",
+            get(get_all_tags_user_has_followed),
+        )
+        .route("/user_followed_a_tag", post(user_followed_a_tag))
+        .route(
+            "/user_removed_a_followed_tag",
+            post(user_removed_a_followed_tag),
+        );
 
     Router::new()
         .nest("/api/auth", auth_routes)
