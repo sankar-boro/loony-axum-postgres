@@ -114,6 +114,7 @@ pub struct BlogInfo {
     title: String,
     body: String,
     images: Option<String>,
+    theme: i16,
     created_at: DateTime<Utc>,
 }
 
@@ -132,7 +133,7 @@ pub async fn get_all_blog_nodes(
         .await?;
     let blog_row = conn
         .query_one(
-            "SELECT uid, user_id, title, body, images, created_at FROM blogs where uid=$1",
+            "SELECT uid, user_id, title, body, images, theme, created_at FROM blogs where uid=$1",
             &[&blog_request.blog_id],
         )
         .await?;
@@ -143,7 +144,8 @@ pub async fn get_all_blog_nodes(
         title: blog_row.get(2),
         body: blog_row.get(3),
         images: blog_row.get(4),
-        created_at: blog_row.get(5),
+        created_at: blog_row.get(6),
+        theme: 11,
     };
 
     let mut nodes: Vec<BlogNode> = Vec::new();
