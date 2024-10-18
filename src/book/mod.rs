@@ -218,8 +218,7 @@ pub async fn append_book_node(
                     .await?;
                 update_node = Some(json!({
                     "uid": update_row_id,
-                    "parent_id": new_node_id,
-                    "description": "update parent_id where uid"
+                    "parent_id": new_node_id
                 }))
             }
         }
@@ -369,10 +368,12 @@ pub async fn delete_book_node(
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
         Json(json!({
-            "updated_id": updated_id,
-            "deleted_ids": delete_row_ids,
-            "parent_id": &body.parent_id,
-            "num_deleted_rows": num_deleted_rows
+            "delete_nodes": delete_row_ids,
+            "update_node": {
+                "uid": updated_id,
+                "parent_id": &body.parent_id,
+            },
+            "rows": num_deleted_rows
         })),
     ))
 }

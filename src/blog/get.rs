@@ -46,14 +46,11 @@ pub async fn get_all_blogs_by_page_no(
             doc_type: 1,
         });
     }
-    log::info!("{:?}", blogs);
 
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": blogs
-        })),
+        Json(blogs),
     ))
 }
 
@@ -85,9 +82,7 @@ pub async fn get_all_blogs_by_user_id(
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": blogs
-        })),
+        Json(blogs),
     ))
 }
 
@@ -161,7 +156,6 @@ pub async fn get_all_blog_nodes(
             theme: rows[index].get(5),
         });
     }
-    log::info!("{:?}", nodes);
 
     Ok((
         StatusCode::OK,
@@ -173,7 +167,7 @@ pub async fn get_all_blog_nodes(
     ))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct HomeBlogsResponse {
     uid: i32,
     title: String,
@@ -220,8 +214,6 @@ pub async fn get_all_blogs_liked_by_user(
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": blogs
-        })),
+        Json(blogs),
     ))
 }

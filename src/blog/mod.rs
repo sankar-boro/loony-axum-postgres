@@ -139,7 +139,7 @@ pub async fn create_blog(
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
         Json(json!({
-            "blog_id": blog_id,
+            "uid": blog_id,
             "title": &body.title.clone(),
             "body": &body.body.clone(),
             "images": &images,
@@ -184,7 +184,7 @@ pub async fn edit_blog(
         .await?;
 
     let edit_blog = json!({
-        "blog_id": blog_id,
+        "uid": blog_id,
         "title": &body.title.clone(),
         "body": &body.body.clone(),
         "images": &images,
@@ -291,8 +291,8 @@ pub async fn append_blog_node(
                 "theme": &body.theme
             },
             "update_node": {
-                "update_row_id": update_row_uid,
-                "update_row_parent_id": new_node_uid
+                "uid": update_row_uid,
+                "parent_id": new_node_uid
             }
         })),
     ))
@@ -333,10 +333,19 @@ pub async fn delete_blog(
 }
 
 #[derive(Deserialize, Serialize)]
+struct DeleteNode {
+    uid: i32,
+}
+#[derive(Deserialize, Serialize)]
+struct UpdateNode {
+    uid: i32,
+    parent_id: i32,
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct DeleteBlogNode {
-    delete_node_id: i32,
-    update_parent_id: i32,
-    update_node_id: Option<i32>,
+    delete_node: DeleteNode,
+    update_node: UpdateNode,
 }
 
 pub async fn delete_blog_node(
@@ -355,19 +364,20 @@ pub async fn delete_blog_node(
         .await?;
     let transaction = conn.transaction().await?;
     transaction
-        .execute(&state1, &[&current_time, &body.delete_node_id])
+        .execute(&state1, &[&current_time, &body.delete_node.uid])
         .await?;
     transaction
-        .execute(&state2, &[&body.update_parent_id, &body.update_node_id])
+        .execute(
+            &state2,
+            &[&body.update_node.parent_id, &body.update_node.uid],
+        )
         .await?;
     transaction.commit().await?;
 
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": "blog deleted"
-        })),
+        Json(body),
     ))
 }
 
@@ -407,14 +417,10 @@ pub async fn edit_blog_node(
         user_id,
         body.blog_id,
     );
-    let edit_blog = json!({
-        "status": 200,
-        "message": "UPDATED",
-    });
 
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(edit_blog),
+        Json(body),
     ))
 }
