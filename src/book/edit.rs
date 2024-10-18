@@ -104,19 +104,11 @@ pub async fn edit_book_node(
             &[&body.title, &body.body, &images, &body.theme, &body.uid],
         )
         .await?;
-    let edit_book = json!({
-        "data": {
-            "title": &body.title.clone(),
-            "body": &body.body.clone(),
-            "images": &images,
-            "theme": &body.theme,
-        }
-    });
 
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(edit_book),
+        Json(body),
     ))
 }
 

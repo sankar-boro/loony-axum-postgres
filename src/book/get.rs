@@ -54,9 +54,7 @@ pub async fn get_all_books_by_page_no(
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": books
-        })),
+        Json(books),
     ))
 }
 
@@ -93,9 +91,7 @@ pub async fn get_all_books_by_user_id(
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": books
-        })),
+        Json(books),
     ))
 }
 
@@ -146,7 +142,7 @@ pub async fn get_book_chapters(
         )
         .await?;
 
-    let book_info = BookInfo {
+    let main_node = BookInfo {
         book_id: book_row.get(0),
         user_id: book_row.get(1),
         title: book_row.get(2),
@@ -155,9 +151,9 @@ pub async fn get_book_chapters(
         created_at: book_row.get(5),
     };
 
-    let mut books: Vec<ChaptersByBookId> = Vec::new();
+    let mut child_nodes: Vec<ChaptersByBookId> = Vec::new();
     for (index, _) in rows.iter().enumerate() {
-        books.push(ChaptersByBookId {
+        child_nodes.push(ChaptersByBookId {
             uid: rows[index].get(0),
             parent_id: rows[index].get(1),
             title: rows[index].get(2),
@@ -172,8 +168,8 @@ pub async fn get_book_chapters(
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
         Json(json!({
-            "chapters": books,
-            "book": book_info
+            "child_nodes": child_nodes,
+            "main_node": main_node
         })),
     ))
 }
@@ -236,9 +232,7 @@ pub async fn get_book_sections(
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": books
-        })),
+        Json(books),
     ))
 }
 
@@ -301,9 +295,7 @@ pub async fn get_book_sub_sections(
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": books
-        })),
+        Json(books),
     ))
 }
 
@@ -346,8 +338,6 @@ pub async fn get_all_books_liked_by_user(
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "data": books
-        })),
+        Json(books),
     ))
 }

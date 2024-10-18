@@ -133,7 +133,7 @@ pub async fn get_all_blog_nodes(
         )
         .await?;
 
-    let blog_info = BlogInfo {
+    let main_node = BlogInfo {
         uid: blog_row.get(0),
         user_id: blog_row.get(1),
         title: blog_row.get(2),
@@ -143,10 +143,10 @@ pub async fn get_all_blog_nodes(
         theme: 11,
     };
 
-    let mut nodes: Vec<BlogNode> = Vec::new();
+    let mut child_nodes: Vec<BlogNode> = Vec::new();
 
     for (index, _) in rows.iter().enumerate() {
-        nodes.push(BlogNode {
+        child_nodes.push(BlogNode {
             uid: rows[index].get(0),
             blog_id: blog_row.get(0),
             parent_id: rows[index].get(1),
@@ -161,8 +161,8 @@ pub async fn get_all_blog_nodes(
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
         Json(json!({
-            "nodes": nodes,
-            "blog": blog_info
+            "child_nodes": child_nodes,
+            "main_node": main_node
         })),
     ))
 }
