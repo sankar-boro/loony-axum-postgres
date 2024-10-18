@@ -51,7 +51,6 @@ pub async fn get_all_books_by_page_no(
             doc_type: 2,
         })
     }
-    log::info!("{:?}", books);
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
@@ -169,7 +168,6 @@ pub async fn get_book_chapters(
             theme: rows[index].get(7),
         });
     }
-    log::info!("{:?}", books);
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
@@ -234,8 +232,6 @@ pub async fn get_book_sections(
             theme,
         })
     }
-
-    log::info!("{:?}", books);
 
     Ok((
         StatusCode::OK,
