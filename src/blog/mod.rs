@@ -26,6 +26,7 @@ pub struct CreateBlog {
 
 #[derive(Deserialize, Serialize)]
 pub struct EditBlog {
+    uid: i32,
     blog_id: i32,
     title: String,
     body: String,
@@ -157,50 +158,42 @@ pub async fn edit_blog(
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = session.get_user_id().await?;
 
-    let conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
 
-    let row = conn
-        .query_one(
-            "UPDATE blogs SET title=$1, body=$2, images=$3, theme=$4 WHERE blog_id=$5",
+    let state_1 = conn
+        .prepare("UPDATE blogs SET title=$1, body=$2, images=$3, theme=$4 WHERE uid=$5")
+        .await?;
+
+    // let blog_id: i32 = row.get(0);
+
+    let state_2 = conn
+        .prepare("UPDATE blog SET title=$1, body=$2, images=$3, theme=$4 WHERE uid=$5")
+        .await?;
+    let transaction = conn.transaction().await?;
+    transaction
+        .execute(
+            &state_1,
             &[&body.title, &body.body, &images, &body.theme, &body.blog_id],
         )
         .await?;
-
-    let blog_id: i32 = row.get(0);
-
-    let _ = conn
-        .query_one(
-            "UPDATE blog SET title=$1, body=$2, images=$3, theme=$4 WHERE blog_id=$5",
-            &[
-                &blog_id,
-                &body.title,
-                &body.body,
-                &images,
-                &body.theme,
-                &body.blog_id,
-            ],
+    transaction
+        .execute(
+            &state_2,
+            &[&body.title, &body.body, &images, &body.theme, &body.uid],
         )
         .await?;
 
-    let edit_blog = json!({
-        "uid": blog_id,
-        "title": &body.title.clone(),
-        "body": &body.body.clone(),
-        "images": &images,
-        "blog_id": &body.blog_id,
-        "theme": &body.theme
-    });
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,
         &pool.dirs.blog_upload,
         user_id,
-        blog_id,
+        body.blog_id,
     );
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(edit_blog),
+        Json(body),
     ))
 }
 
@@ -231,20 +224,20 @@ pub async fn append_blog_node(
         .await;
     let images = &serde_json::to_string(&body.images).unwrap();
 
-    let state1 = conn
+    let insert_statement = conn
         .prepare(
             "INSERT INTO blog(blog_id, parent_id, title, body, images, tags, theme) values($1, $2, $3, $4, $5, $6, $7) returning uid"
         )
         .await?;
 
-    let state2 = conn
+    let update_statement = conn
         .prepare("UPDATE blog SET parent_id=$1 where uid=$2 RETURNING uid")
         .await?;
 
     let transaction = conn.transaction().await?;
     let new_node = transaction
         .query_one(
-            &state1,
+            &insert_statement,
             &[
                 &body.blog_id,
                 &body.parent_id,
@@ -264,7 +257,7 @@ pub async fn append_blog_node(
         if !update_row.is_empty() {
             update_row_uid = update_row.get(0);
             transaction
-                .execute(&state2, &[&new_node_uid, &update_row_uid])
+                .execute(&update_statement, &[&new_node_uid, &update_row_uid])
                 .await?;
         }
     }

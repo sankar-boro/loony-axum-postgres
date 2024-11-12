@@ -1,3 +1,4 @@
+use crate::credentials;
 use crate::{
     auth::logout,
     blog::{
@@ -78,6 +79,11 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         )
         .route("/logout", post(logout));
 
+    let cred_routes = Router::new()
+        .route("/add", post(credentials::add))
+        .route("/delete", post(credentials::delete))
+        .route("/edit", post(credentials::edit));
+
     let blog_routes = Router::new()
         .route("/create", post(create_blog))
         .route("/edit/main", post(edit_blog))
@@ -130,6 +136,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .nest("/api/auth", auth_routes)
         .nest("/api/blog", blog_routes)
         .nest("/api/book", book_routes)
+        .nest("/api/creds", cred_routes)
         .nest("/api/tag", tag_routes)
         .route("/api/upload_file", post(upload_file))
         .route("/api/blog/:uid/:size/:filename", get(get_blog_file))

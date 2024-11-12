@@ -1,5 +1,5 @@
 CREATE TABLE blogs (
-    uid serial PRIMARY KEY NOT NULL,
+    uid serial PRIMARY KEY,
     user_id INT,
     title TEXT,
     body TEXT,
@@ -11,7 +11,7 @@ CREATE TABLE blogs (
     deleted_at TIMESTAMP WITH TIME ZONE NULL
 );
 CREATE TABLE blog (
-    uid serial PRIMARY KEY NOT NULL,
+    uid serial PRIMARY KEY,
     blog_id INT,
     user_id INT,
     parent_id INT,
