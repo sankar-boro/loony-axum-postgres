@@ -14,7 +14,7 @@ TMP_UPLOADS="$HOME/.tmp_uploads"
 BLOG_UPLOADS="$HOME/.blog_uploads"
 BOOK_UPLOADS="$HOME/.book_uploads"
 USER_UPLOADS="$HOME/.user_uploads"
-ALLOW_ORIGIN="http://localhost:3000"
+ORIGINS="http://localhost:3000,http://localhost:8081,http://127.0.0.1:8081,http://10.0.2.2:8081,http://192.168.6.48:8081"
 SECRET_KEY="lorem_ipsum_dolor_isset"
 
 if [ ! -d "$TMP_UPLOADS" ]; then
@@ -38,7 +38,7 @@ PG_HOST=localhost \
 PG_USER="$USERNAME" \
 PG_DBNAME="$USERNAME" \
 PG_PASSWORD="$USERNAME" \
-ALLOW_ORIGIN="$ALLOW_ORIGIN" \
+ORIGINS="$ORIGINS" \
 SECRET_KEY="$SECRET_KEY" \
 TMP_UPLOADS="$TMP_UPLOADS" \
 BLOG_UPLOADS="$BLOG_UPLOADS" \

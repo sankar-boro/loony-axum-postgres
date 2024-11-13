@@ -15,7 +15,48 @@ pub struct AddDocRequest {
     password: String,
     url: String,
     metadata: String,
-    user_id: u32,
+    user_id: i32,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Creds {
+    uid: i32,
+    name: String,
+    username: String,
+    password: String,
+    url: String,
+    metadata: String,
+}
+
+pub async fn get(
+    State(state): State<AppState>,
+    AxumPath(user_id): AxumPath<i32>,
+) -> Result<impl IntoResponse, AppError> {
+    let conn = state.pg_pool.get().await?;
+
+    let mut creds: Vec<Creds> = Vec::new();
+    let rows = conn
+        .query(
+            "SELECT uid, name, username, password, url, metadata FROM credentials WHERE user_id=$1",
+            &[&user_id],
+        )
+        .await?;
+    for row in rows.iter() {
+        creds.push(Creds {
+            uid: row.get(0),
+            name: row.get(1),
+            username: row.get(2),
+            password: row.get(3),
+            url: row.get(4),
+            metadata: row.get(5),
+        });
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(creds),
+    ))
 }
 
 pub async fn add(
@@ -39,11 +80,11 @@ pub async fn add(
 
 pub async fn delete(
     State(state): State<AppState>,
-    AxumPath(delete_uid): AxumPath<i64>,
+    AxumPath(uid): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = state.pg_pool.get().await?;
 
-    conn.execute("DELETE from credentials WHERE uid=$1", &[&delete_uid])
+    conn.execute("DELETE from credentials WHERE uid=$1", &[&uid])
         .await?;
 
     Ok((
@@ -55,6 +96,7 @@ pub async fn delete(
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EditDocRequest {
+    uid: i32,
     name: String,
     username: String,
     password: String,
@@ -68,7 +110,7 @@ pub async fn edit(
 ) -> Result<impl IntoResponse, AppError> {
     let conn = state.pg_pool.get().await?;
 
-    conn.execute("UPDATE credentials SET name=$1, username=$2, password=$3, url=$4, metadata=$5 WHERE uid=$6", &[&body.name, &body.username, &body.password, &body.url, &body.metadata])
+    conn.execute("UPDATE credentials SET name=$1, username=$2, password=$3, url=$4, metadata=$5 WHERE uid=$6", &[&body.name, &body.username, &body.password, &body.url, &body.metadata, &body.uid])
         .await?;
 
     Ok((

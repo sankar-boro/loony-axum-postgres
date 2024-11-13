@@ -81,8 +81,9 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
 
     let cred_routes = Router::new()
         .route("/add", post(credentials::add))
-        .route("/delete", post(credentials::delete))
-        .route("/edit", post(credentials::edit));
+        .route("/delete/:uid", post(credentials::delete))
+        .route("/edit", post(credentials::edit))
+        .route("/get/:user_id", get(credentials::get));
 
     let blog_routes = Router::new()
         .route("/create", post(create_blog))

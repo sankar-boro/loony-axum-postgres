@@ -18,10 +18,10 @@ use axum::http::{
 };
 use bb8::Pool;
 use bb8_postgres::{bb8, PostgresConnectionManager};
-use log4rs;
+// use log4rs;
 use tokio_postgres::NoTls;
 use tower_http::cors::CorsLayer;
-// use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
 #[allow(dead_code)]
@@ -62,40 +62,43 @@ async fn create_connection() -> AppState {
             blog_upload: String::from(std::env::var("BLOG_UPLOADS").unwrap()),
             book_upload: String::from(std::env::var("BOOK_UPLOADS").unwrap()),
             user_upload: String::from(std::env::var("USER_UPLOADS").unwrap()),
-        }, // redis_pool
+        },
     };
 }
 
 #[tokio::main]
 async fn main() {
-    log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
+    // log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
     let host = std::env::var("HOST").unwrap();
     let port = std::env::var("PORT").unwrap();
-    let allow_origin = std::env::var("ALLOW_ORIGIN").unwrap();
+    let origins = std::env::var("ORIGINS").unwrap();
 
-    // tracing_subscriber::registry()
-    //     .with(
-    //         tracing_subscriber::EnvFilter::try_from_default_env()
-    //             .unwrap_or_else(|_| "example_tokio_postgres=debug".into()),
-    //     )
-    //     .with(tracing_subscriber::fmt::layer())
-    //     .init();
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "example_tokio_postgres=debug".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     let connection = create_connection().await;
 
+    // Parse the comma-separated string into a Vec<String>
+    let origins: Vec<HeaderValue> = origins
+        .split(',')
+        .map(|s| s.parse::<HeaderValue>().unwrap())
+        .collect();
+
     let cors = CorsLayer::new()
-        .allow_origin(allow_origin.parse::<HeaderValue>().unwrap())
+        .allow_origin(origins)
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_credentials(true)
         .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE]);
 
     let router = route::create_router(connection, cors).await;
-
-    // run it
     let listener = tokio::net::TcpListener::bind(format!("{host}:{port}"))
         .await
         .unwrap();
-    // tracing::info!("listening on {}", listener.local_addr().unwrap());
-    log::info!("listening on {}", listener.local_addr().unwrap());
+    tracing::info!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, router).await.unwrap();
 }
