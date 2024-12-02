@@ -177,38 +177,38 @@ pub struct HomeBlogsResponse {
     doc_type: u8,
 }
 
-pub async fn get_all_blogs_liked_by_user(
+pub async fn get_users_blog(
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
-    let user_tags_query = "SELECT tag_id FROM user_tags where user_id=$1";
-    let blog_ids_user_tags_query = "SELECT blog_id FROM blog_tags where tag_id=ANY($1)";
-    let blog_ids_query = "SELECT uid, title, body, images, created_at FROM blogs where uid=ANY($1)";
 
-    let mut tag_ids: Vec<i32> = Vec::new();
-    let rows = conn.query(user_tags_query, &[&user_id]).await?;
-    for row in rows.iter() {
-        tag_ids.push(row.get(0));
-    }
+    let blog_ids_user_tags_query = "SELECT blog_id FROM blog_tags where user_id=$1";
+    let blog_id_rows = conn.query(blog_ids_user_tags_query, &[&user_id]).await?;
 
     let mut blog_ids: Vec<i32> = Vec::new();
-    let rows = conn.query(blog_ids_user_tags_query, &[&tag_ids]).await?;
-    for row in rows.iter() {
-        blog_ids.push(row.get(0));
+    if blog_id_rows.len() > 0 {
+        for row in blog_id_rows.iter() {
+            blog_ids.push(row.get(0));
+        }
     }
 
     let mut blogs: Vec<HomeBlogsResponse> = Vec::new();
-    let rows = conn.query(blog_ids_query, &[&blog_ids]).await?;
-    for row in rows.iter() {
-        blogs.push(HomeBlogsResponse {
-            uid: row.get(0),
-            title: row.get(1),
-            body: row.get(2),
-            images: row.get(3),
-            created_at: row.get(4),
-            doc_type: 1,
-        });
+
+    if blog_id_rows.len() > 0 {
+        let blogs_query =
+            "SELECT uid, title, body, images, created_at FROM blogs where uid=ANY($1)";
+        let blog_rows = conn.query(blogs_query, &[&blog_ids]).await?;
+        for row in blog_rows.iter() {
+            blogs.push(HomeBlogsResponse {
+                uid: row.get(0),
+                title: row.get(1),
+                body: row.get(2),
+                images: row.get(3),
+                created_at: row.get(4),
+                doc_type: 1,
+            });
+        }
     }
 
     Ok((

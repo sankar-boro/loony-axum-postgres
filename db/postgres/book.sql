@@ -1,6 +1,9 @@
+DROP TABLE IF EXISTS books;
+DROP TABLE IF EXISTS book;
+
 CREATE TABLE books (
     uid serial PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     title TEXT NOT NULL,
     body TEXT,
     images TEXT,
@@ -12,7 +15,7 @@ CREATE TABLE books (
 CREATE TABLE book (
     uid serial PRIMARY KEY,
     book_id INT,
-    user_id INT,
+    user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     page_id INT, -- page_id is required to show all nodes of a page
     parent_id INT,
     title TEXT,

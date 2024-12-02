@@ -1,7 +1,9 @@
 pub mod get;
+mod utils;
 
 use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
+use crate::utils::doc::insert_tags;
 use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
@@ -49,85 +51,58 @@ pub async fn create_blog(
     Json(body): Json<CreateBlog>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = session.get_user_id().await?;
-    let mut conn = pool.pg_pool.get().await?;
+    let identity: i16 = 100;
     let images = &serde_json::to_string(&body.images).unwrap();
 
-    let state1 = conn
-        .prepare(
-            "INSERT INTO blogs(title, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5) RETURNING uid"
-        )
-        .await?;
-    let state2 = conn
-        .prepare(
-            "INSERT INTO blog(uid, title, body, images, theme) VALUES($1, $2, $3, $4, $5) RETURNING *",
-        )
-        .await?;
+    let mut conn = pool.pg_pool.get().await?;
 
-    let mut insert_tags_query: Option<String> = None;
-    if let Some(tags) = &body.tags {
-        insert_tags_query = Some(format!(
-            "WITH ins AS (
-                INSERT INTO tags (name)
-                VALUES {}
-                ON CONFLICT (name) DO NOTHING
-                RETURNING uid, name
-            )
-            SELECT uid, name FROM ins
-            UNION ALL
-            SELECT uid, name FROM tags WHERE name IN ({}) AND NOT EXISTS (SELECT uid, name FROM ins)",
-            tags.iter()
-                .map(|s| format!("('{}')", s))
-                .collect::<Vec<String>>()
-                .join(", "),
-                tags.iter()
-                .map(|s| format!("'{}'", s))
-                .collect::<Vec<String>>()
-                .join(", ")
-        ));
-    }
+    let insert_blogs_query = conn
+        .prepare("INSERT INTO blogs(title, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5) RETURNING uid")
+        .await?;
+    let insert_blog_query = conn
+        .prepare("INSERT INTO blog(uid, title, identity, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING uid")
+        .await?;
 
     let transaction = conn.transaction().await?;
+
     let row = transaction
         .query_one(
-            &state1,
+            &insert_blogs_query,
             &[&body.title, &body.body, &images, &user_id, &body.theme],
         )
         .await?;
-    let blog_id: i32 = row.get(0);
 
-    if let Some(insert_tags_query) = insert_tags_query {
-        let res = transaction.query(&insert_tags_query, &[]).await?;
-        let mut tag_rows: Vec<(i32, i32, i32)> = Vec::new();
-        for row in res.iter() {
-            tag_rows.push((row.get(0), blog_id, user_id));
-        }
-        let blog_tag_query = format!(
-            "INSERT INTO blog_tags(tag_id, blog_id) VALUES {} RETURNING uid",
-            tag_rows
-                .iter()
-                .map(|(tid, bid, _)| format!("('{}', '{}')", tid, bid))
-                .collect::<Vec<String>>()
-                .join(", "),
-        );
-        let user_tag_query = format!(
-            "INSERT INTO user_tags(tag_id, user_id) VALUES {} RETURNING uid",
-            tag_rows
-                .iter()
-                .map(|(tid, _, uid)| format!("('{}', '{}')", tid, uid))
-                .collect::<Vec<String>>()
-                .join(", "),
-        );
-        transaction.execute(&blog_tag_query, &[]).await?;
-        transaction.execute(&user_tag_query, &[]).await?;
-    }
+    let blog_id: i32 = row.get(0);
 
     transaction
         .execute(
-            &state2,
-            &[&blog_id, &body.title, &body.body, &images, &body.theme],
+            &insert_blog_query,
+            &[
+                &blog_id,
+                &body.title,
+                &identity,
+                &body.body,
+                &images,
+                &user_id,
+                &body.theme,
+            ],
         )
         .await?;
+
+    let score: i32 = 1;
+
     transaction.commit().await?;
+
+    let mut tags: Vec<(i32, i32, String, i32)> = Vec::new();
+    body.tags.unwrap().iter().for_each(|x| {
+        tags.push((blog_id, user_id, x.to_owned(), score));
+    });
+
+    conn.query(
+        &insert_tags("blog_tags", "(blog_id, user_id, tag, score)", tags),
+        &[],
+    )
+    .await?;
 
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,
@@ -136,18 +111,20 @@ pub async fn create_blog(
         blog_id,
     );
 
+    let new_blog = json!({
+        "blog_id": blog_id,
+        "title": &body.title.clone(),
+        "body": &body.body.clone(),
+        "identity": &identity,
+        "images": &images,
+        "user_id": &user_id,
+        "theme": &body.theme
+    });
+
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(json!({
-            "uid": blog_id,
-            "title": &body.title.clone(),
-            "body": &body.body.clone(),
-            "images": &images,
-            "user_id": &user_id,
-            "tags": &body.tags,
-            "theme": &body.theme
-        })),
+        Json(new_blog),
     ))
 }
 

@@ -22,10 +22,7 @@ pub async fn get_all_tags_user_can_follow(
 
     let get_tags_res = conn
         .query(
-            "SELECT t.uid, t.name
-            FROM tags t
-            LEFT JOIN user_tags ut ON t.uid = ut.tag_id AND ut.user_id = $1
-            WHERE ut.tag_id IS NULL",
+            "SELECT uid, tag, score from book_tags where user_id != $1",
             &[&user_id],
         )
         .await?;
@@ -53,9 +50,7 @@ pub async fn get_all_tags_user_has_followed(
 
     let get_tags_res = conn
         .query(
-            "SELECT t.uid, t.name
-            FROM tags t
-            LEFT JOIN user_tags ut ON t.uid = ut.tag_id AND ut.user_id = $1",
+            "SELECT uid, tag, score from book_tags where user_id = $1",
             &[&user_id],
         )
         .await?;

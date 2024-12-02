@@ -1,3 +1,5 @@
+pub mod doc;
+
 use crate::error::AppError;
 use crate::types::ImageMetadata;
 use tower_sessions::Session;

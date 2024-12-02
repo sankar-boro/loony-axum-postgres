@@ -1,6 +1,9 @@
+DROP TABLE IF EXISTS blogs;
+DROP TABLE IF EXISTS blog;
+
 CREATE TABLE blogs (
     uid serial PRIMARY KEY,
-    user_id INT,
+    user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     title TEXT,
     body TEXT,
     images TEXT,
@@ -13,7 +16,7 @@ CREATE TABLE blogs (
 CREATE TABLE blog (
     uid serial PRIMARY KEY,
     blog_id INT,
-    user_id INT,
+    user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     parent_id INT,
     title TEXT,
     body TEXT,

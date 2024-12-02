@@ -1,8 +1,10 @@
 pub mod edit;
 pub mod get;
+pub mod utils;
 
 use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
+use crate::utils::doc::insert_tags;
 use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
@@ -44,28 +46,7 @@ pub async fn create_book(
     let insert_book_query = conn
         .prepare("INSERT INTO book(book_id, title, identity, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING uid")
         .await?;
-    let mut insert_tags_query: Option<String> = None;
-    if let Some(tags) = &body.tags {
-        insert_tags_query = Some(format!(
-            "WITH ins AS (
-                INSERT INTO tags (name)
-                VALUES {}
-                ON CONFLICT (name) DO NOTHING
-                RETURNING uid, name
-            )
-            SELECT uid, name FROM ins
-            UNION ALL
-            SELECT uid, name FROM tags WHERE name IN ({}) AND NOT EXISTS (SELECT uid, name FROM ins)",
-            tags.iter()
-                .map(|s| format!("('{}')", s))
-                .collect::<Vec<String>>()
-                .join(", "),
-                tags.iter()
-                .map(|s| format!("'{}'", s))
-                .collect::<Vec<String>>()
-                .join(", ")
-        ));
-    }
+
     let transaction = conn.transaction().await?;
 
     let row = transaction
@@ -76,32 +57,6 @@ pub async fn create_book(
         .await?;
 
     let book_id: i32 = row.get(0);
-
-    if let Some(insert_tags_query) = insert_tags_query {
-        let res = transaction.query(&insert_tags_query, &[]).await?;
-        let mut tag_rows: Vec<(i32, i32, i32)> = Vec::new();
-        for row in res.iter() {
-            tag_rows.push((row.get(0), book_id, user_id));
-        }
-        let book_tag_query = format!(
-            "INSERT INTO book_tags(tag_id, book_id) VALUES {} RETURNING uid",
-            tag_rows
-                .iter()
-                .map(|(tid, bid, _)| format!("('{}', '{}')", tid, bid))
-                .collect::<Vec<String>>()
-                .join(", "),
-        );
-        let user_tag_query = format!(
-            "INSERT INTO user_tags(tag_id, user_id) VALUES {} RETURNING uid",
-            tag_rows
-                .iter()
-                .map(|(tid, _, uid)| format!("('{}', '{}')", tid, uid))
-                .collect::<Vec<String>>()
-                .join(", "),
-        );
-        transaction.execute(&book_tag_query, &[]).await?;
-        transaction.execute(&user_tag_query, &[]).await?;
-    }
 
     transaction
         .execute(
@@ -117,7 +72,21 @@ pub async fn create_book(
             ],
         )
         .await?;
+
+    let score: i32 = 1;
+
     transaction.commit().await?;
+
+    let mut tags: Vec<(i32, i32, String, i32)> = Vec::new();
+    body.tags.unwrap().iter().for_each(|x| {
+        tags.push((book_id, user_id, x.to_owned(), score));
+    });
+
+    conn.query(
+        &insert_tags("book_tags", "(book_id, user_id, tag, score)", tags),
+        &[],
+    )
+    .await?;
 
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,

@@ -4,11 +4,10 @@ use crate::{
     blog::{
         append_blog_node, create_blog, delete_blog, delete_blog_node, edit_blog, edit_blog_node,
         get::{
-            get_all_blog_nodes, get_all_blogs_by_page_no, get_all_blogs_by_user_id,
-            get_all_blogs_liked_by_user,
+            get_all_blog_nodes, get_all_blogs_by_page_no, get_all_blogs_by_user_id, get_users_blog,
         },
     },
-    book::{get::get_all_books_liked_by_user, test_query},
+    book::{get::get_users_book, test_query},
     likes::tag::{
         get_all_tags_user_can_follow, get_all_tags_user_has_followed, user_followed_a_tag,
         user_removed_a_followed_tag,
@@ -94,10 +93,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/append/node", post(append_blog_node))
         .route("/get/nodes", get(get_all_blog_nodes))
         .route("/get/:page_no/by_page", get(get_all_blogs_by_page_no))
-        .route(
-            "/get/:user_id/get_all_blogs_liked_by_user",
-            get(get_all_blogs_liked_by_user),
-        )
+        .route("/get/:user_id/get_users_blog", get(get_users_blog))
         .route("/get/:uid/user_blogs", get(get_all_blogs_by_user_id));
 
     let book_routes = Router::new()
@@ -111,10 +107,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/get/chapters", get(get_book_chapters))
         .route("/get/sections", get(get_book_sections))
         .route("/get/sub_sections", get(get_book_sub_sections))
-        .route(
-            "/get/:user_id/get_all_books_liked_by_user",
-            get(get_all_books_liked_by_user),
-        )
+        .route("/get/:user_id/get_users_book", get(get_users_book))
         .route("/get/:page_no/by_page", get(get_all_books_by_page_no))
         .route("/get/:uid/user_books", get(get_all_books_by_user_id));
 
