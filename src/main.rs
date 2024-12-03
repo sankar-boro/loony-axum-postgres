@@ -8,8 +8,10 @@ mod query;
 mod credentials;
 mod likes;
 mod route;
+mod search;
 mod traits;
 mod types;
+mod user;
 mod utils;
 
 use axum::http::{
@@ -18,6 +20,7 @@ use axum::http::{
 };
 use bb8::Pool;
 use bb8_postgres::{bb8, PostgresConnectionManager};
+use search::Search;
 // use log4rs;
 use tokio_postgres::NoTls;
 use tower_http::cors::CorsLayer;
@@ -36,9 +39,10 @@ pub struct Dirs {
 pub struct AppState {
     pub pg_pool: Pool<PostgresConnectionManager<NoTls>>,
     pub dirs: Dirs,
+    pub search: Search,
 }
 
-async fn create_connection() -> AppState {
+async fn init() -> AppState {
     let pg_host = std::env::var("PG_HOST").unwrap();
     let pg_user = std::env::var("PG_USER").unwrap();
     let pg_dbname = std::env::var("PG_DBNAME").unwrap();
@@ -63,6 +67,7 @@ async fn create_connection() -> AppState {
             book_upload: String::from(std::env::var("BOOK_UPLOADS").unwrap()),
             user_upload: String::from(std::env::var("USER_UPLOADS").unwrap()),
         },
+        search: search::init_search(),
     };
 }
 
@@ -81,7 +86,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let connection = create_connection().await;
+    let connection = init().await;
 
     // Parse the comma-separated string into a Vec<String>
     let origins: Vec<HeaderValue> = origins

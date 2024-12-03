@@ -1,4 +1,5 @@
 use crate::credentials;
+use crate::user::{get_subscribed_users, subscribe_user, un_subscribe_user};
 use crate::{
     auth::logout,
     blog::{
@@ -111,6 +112,11 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/get/:page_no/by_page", get(get_all_books_by_page_no))
         .route("/get/:uid/user_books", get(get_all_books_by_user_id));
 
+    let user_routes = Router::new()
+        .route("/:user_id/subscribe", post(subscribe_user))
+        .route("/:user_id/un_subscribe", post(un_subscribe_user))
+        .route("/get_subscribed_users", get(get_subscribed_users));
+
     let tag_routes = Router::new()
         .route(
             "/:user_id/get_all_tags_user_can_follow",
@@ -132,6 +138,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .nest("/api/book", book_routes)
         .nest("/api/creds", cred_routes)
         .nest("/api/tag", tag_routes)
+        .nest("/api/user", user_routes)
         .route("/api/upload_file", post(upload_file))
         .route("/api/blog/:uid/:size/:filename", get(get_blog_file))
         .route("/api/book/:uid/:size/:filename", get(get_book_file))

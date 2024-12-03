@@ -9,6 +9,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashSet;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GetAllBlogs {
@@ -186,10 +187,15 @@ pub async fn get_users_blog(
     let blog_ids_user_tags_query = "SELECT blog_id FROM blog_tags where user_id=$1";
     let blog_id_rows = conn.query(blog_ids_user_tags_query, &[&user_id]).await?;
 
+    let mut seen: HashSet<i32> = std::collections::HashSet::new();
     let mut blog_ids: Vec<i32> = Vec::new();
+
     if blog_id_rows.len() > 0 {
         for row in blog_id_rows.iter() {
-            blog_ids.push(row.get(0));
+            let blog_id: i32 = row.get(0);
+            if seen.insert(blog_id) {
+                blog_ids.push(row.get(0));
+            }
         }
     }
 

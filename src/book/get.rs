@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::error::AppError;
 use crate::AppState;
 use axum::{
@@ -308,11 +310,16 @@ pub async fn get_users_book(
     let conn = pool.pg_pool.get().await?;
 
     let book_ids_user_tags_query = "SELECT book_id FROM book_tags where user_id=$1";
+    let mut seen: HashSet<i32> = HashSet::new();
     let mut book_ids: Vec<i32> = Vec::new();
     let book_id_rows = conn.query(book_ids_user_tags_query, &[&user_id]).await?;
+
     if book_id_rows.len() > 0 {
         for row in book_id_rows.iter() {
-            book_ids.push(row.get(0));
+            let book_id: i32 = row.get(0);
+            if seen.insert(book_id) {
+                book_ids.push(book_id);
+            }
         }
     }
 

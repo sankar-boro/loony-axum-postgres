@@ -12,6 +12,7 @@ CREATE TABLE books (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL
 );
+
 CREATE TABLE book (
     uid serial PRIMARY KEY,
     book_id INT,
