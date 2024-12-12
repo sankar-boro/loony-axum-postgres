@@ -21,10 +21,9 @@ use tower_sessions::Session;
 #[derive(Deserialize, Serialize)]
 pub struct CreateBook {
     title: String,
-    body: String,
+    content: String,
     images: Vec<Images>,
-    tags: Option<Vec<String>>,
-    theme: i16,
+    tags: Vec<String>,
 }
 
 // @Create
@@ -41,10 +40,10 @@ pub async fn create_book(
     let mut conn = pool.pg_pool.get().await?;
 
     let insert_books_query = conn
-        .prepare("INSERT INTO books(title, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5) RETURNING uid")
+        .prepare("INSERT INTO books(user_id, title, content, images) VALUES($1, $2, $3, $4) RETURNING uid")
         .await?;
     let insert_book_query = conn
-        .prepare("INSERT INTO book(book_id, title, identity, body, images, user_id, theme) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING uid")
+        .prepare("INSERT INTO book(user_id, book_id, title, content, identity, images) VALUES($1, $2, $3, $4, $5, $6) RETURNING uid")
         .await?;
 
     let transaction = conn.transaction().await?;
@@ -52,7 +51,7 @@ pub async fn create_book(
     let row = transaction
         .query_one(
             &insert_books_query,
-            &[&body.title, &body.body, &images, &user_id, &body.theme],
+            &[&user_id, &body.title, &body.content, &images],
         )
         .await?;
 
@@ -62,28 +61,26 @@ pub async fn create_book(
         .execute(
             &insert_book_query,
             &[
+                &user_id,
                 &book_id,
                 &body.title,
+                &body.content,
                 &identity,
-                &body.body,
                 &images,
-                &user_id,
-                &body.theme,
             ],
         )
         .await?;
 
-    let score: i32 = 1;
-
     transaction.commit().await?;
 
-    let mut tags: Vec<(i32, i32, String, i32)> = Vec::new();
-    body.tags.unwrap().iter().for_each(|x| {
-        tags.push((book_id, user_id, x.to_owned(), score));
+    let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
+    let tags = body.tags;
+    tags.iter().for_each(|__tag| {
+        all_tags.push((book_id, user_id, __tag, 1));
     });
 
     conn.query(
-        &insert_tags("book_tags", "(book_id, user_id, tag, score)", tags),
+        &insert_tags("book_tags", "(book_id, user_id, tag, score)", all_tags),
         &[],
     )
     .await?;
@@ -96,13 +93,12 @@ pub async fn create_book(
     );
 
     let new_book = json!({
-        "book_id": book_id,
-        "title": &body.title.clone(),
-        "body": &body.body.clone(),
-        "identity": &identity,
-        "images": &images,
         "user_id": &user_id,
-        "theme": &body.theme
+        "book_id": book_id,
+        "title": &body.title,
+        "body": &body.content,
+        "identity": &identity,
+        "images": &images
     });
 
     Ok((
@@ -116,13 +112,12 @@ pub async fn create_book(
 pub struct AddBookNode {
     book_id: i32,
     title: String,
-    body: String,
+    content: String,
     images: Vec<Images>,
     parent_id: i32,
     page_id: Option<i32>,
     identity: i16,
     tags: Option<String>,
-    theme: i16,
     parent_identity: i16,
 }
 
@@ -148,7 +143,7 @@ pub async fn append_book_node(
 
     let state1 = conn
     .prepare(
-        "INSERT INTO book(book_id, page_id, parent_id, title, body, identity, images, theme) values($1, $2, $3, $4, $5, $6, $7, $8) returning uid",
+        "INSERT INTO book(book_id, page_id, parent_id, title, content, identity, images) values($1, $2, $3, $4, $5, $6, $7) returning uid",
     )
     .await?;
     let state2 = conn
@@ -164,10 +159,9 @@ pub async fn append_book_node(
                 &body.page_id,
                 &body.parent_id,
                 &body.title,
-                &body.body,
+                &body.content,
                 &body.identity,
                 &images,
-                &body.theme,
             ],
         )
         .await?;
@@ -209,11 +203,10 @@ pub async fn append_book_node(
                 "uid": new_node_id,
                 "parent_id": &body.parent_id,
                 "title": &body.title,
-                "body": &body.body,
+                "body": &body.content,
                 "images": &images,
                 "identity": &body.identity,
-                "page_id": &body.page_id,
-                "theme": &body.theme
+                "page_id": &body.page_id
             },
             "update_node": update_node
         })),

@@ -4,7 +4,6 @@ mod book;
 mod error;
 mod file;
 #[macro_use]
-mod query;
 mod credentials;
 mod likes;
 mod route;

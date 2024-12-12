@@ -8,13 +8,14 @@ if [ "$#" -eq 1 ]; then
     fi
 fi
 
+PORT=8000
 USERNAME="sankar"
 HOME=$HOME
 TMP_UPLOADS="$HOME/.tmp_uploads"
 BLOG_UPLOADS="$HOME/.blog_uploads"
 BOOK_UPLOADS="$HOME/.book_uploads"
 USER_UPLOADS="$HOME/.user_uploads"
-ORIGINS="http://localhost:3000,http://localhost:8081,http://127.0.0.1:8081,http://10.0.2.2:8081,http://192.168.6.48:8081,http://127.0.0.1:2000"
+ORIGINS="https://sankarboro.com,http://localhost,http://localhost:3000,http://127.0.0.1:8081,http://10.0.2.2:8081"
 SECRET_KEY="lorem_ipsum_dolor_isset"
 
 if [ ! -d "$TMP_UPLOADS" ]; then
@@ -32,7 +33,7 @@ fi
 
 RUST_LOG=info \
 HOST=localhost \
-PORT=8000 \
+PORT="$PORT" \
 PASSWORD="$USERNAME" \
 PG_HOST=localhost \
 PG_USER="$USERNAME" \

@@ -16,9 +16,8 @@ use tower_sessions::Session;
 pub struct EditBook {
     book_id: i32,
     title: String,
-    body: String,
+    content: String,
     images: Vec<Images>,
-    theme: i16,
 }
 
 // @Edit
@@ -37,33 +36,32 @@ pub async fn edit_book(
         body.book_id,
     );
     let state1 = conn
-        .prepare("UPDATE books SET title=$1, body=$2, images=$3, theme=$4 WHERE book_id=$5")
+        .prepare("UPDATE books SET title=$1, body=$2, images=$3 WHERE book_id=$4")
         .await?;
     let state2 = conn
-        .prepare("UPDATE book SET title=$1, body=$2, images=$3, theme=$4 WHERE book_id=$5")
+        .prepare("UPDATE book SET title=$1, body=$2, images=$3 WHERE book_id=$4")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
         .execute(
             &state1,
-            &[&body.title, &body.body, &images, &body.theme, &body.book_id],
+            &[&body.title, &body.content, &images, &body.book_id],
         )
         .await?;
     transaction
         .execute(
             &state2,
-            &[&body.title, &body.body, &images, &body.theme, &body.book_id],
+            &[&body.title, &body.content, &images, &body.book_id],
         )
         .await?;
     transaction.commit().await?;
 
     let edit_book = json!({
         "book_id": &body.book_id,
-        "title": &body.title.clone(),
-        "body": &body.body.clone(),
+        "title": &body.title,
+        "body": &body.content,
         "book_id": &body.book_id,
-        "images": &images,
-        "theme": &body.theme,
+        "images": &images
     });
 
     Ok((
@@ -77,11 +75,10 @@ pub async fn edit_book(
 pub struct EditBookNode {
     uid: i32,
     title: String,
-    body: String,
+    content: String,
     identity: i16,
     book_id: i32,
     images: Vec<Images>,
-    theme: i16,
 }
 
 pub async fn edit_book_node(
@@ -100,8 +97,8 @@ pub async fn edit_book_node(
     );
     let _ = conn
         .execute(
-            "UPDATE book SET title=$1, body=$2, images=$3, theme=$4 WHERE uid=$5",
-            &[&body.title, &body.body, &images, &body.theme, &body.uid],
+            "UPDATE book SET title=$1, body=$2, images=$3 WHERE uid=$4",
+            &[&body.title, &body.content, &images, &body.uid],
         )
         .await?;
 

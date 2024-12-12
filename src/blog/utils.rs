@@ -214,10 +214,7 @@ mod tests {
         let res = insert_tags(
             "tags",
             "(book_id, user_id, name, score)",
-            vec![
-                (1, 1, "Sankar".to_string(), 1),
-                (1, 1, "Boro".to_string(), 1),
-            ],
+            vec![(1, 1, "Sankar", 1), (1, 1, "Boro", 1)],
         );
         assert_eq!(
             res,

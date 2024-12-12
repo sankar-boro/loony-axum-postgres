@@ -16,7 +16,7 @@ use serde_json::json;
 pub struct HomeBooksResponse {
     uid: i32,
     title: String,
-    body: String,
+    content: String,
     images: String,
     created_at: DateTime<Utc>,
     doc_type: u8,
@@ -31,7 +31,7 @@ pub async fn get_all_books_by_page_no(
     let offset: i64 = (page_no - 1) * limit;
     let rows = conn
         .query(
-            "SELECT uid, title, body, images, created_at FROM books where deleted_at is NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+            "SELECT uid, title, content, images, created_at FROM books where deleted_at is NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2",
             &[&limit, &offset],
         )
         .await?;
@@ -41,13 +41,13 @@ pub async fn get_all_books_by_page_no(
     for (index, _) in rows.iter().enumerate() {
         let uid: i32 = rows[index].get(0);
         let title: String = rows[index].get(1);
-        let body: String = rows[index].get(2);
+        let content: String = rows[index].get(2);
         let images: String = rows[index].get(3);
         let created_at: DateTime<Utc> = rows[index].get(4);
         books.push(HomeBooksResponse {
             uid,
             title,
-            body,
+            content,
             images,
             created_at,
             doc_type: 2,
@@ -67,7 +67,7 @@ pub async fn get_all_books_by_user_id(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, title, body, images, created_at FROM books where deleted_at is NULL and user_id=$1",
+            "SELECT uid, title, content, images, created_at FROM books where deleted_at is NULL and user_id=$1",
             &[&user_id],
         )
         .await?;
@@ -77,13 +77,13 @@ pub async fn get_all_books_by_user_id(
     for (index, _) in rows.iter().enumerate() {
         let uid: i32 = rows[index].get(0);
         let title: String = rows[index].get(1);
-        let body: String = rows[index].get(2);
+        let content: String = rows[index].get(2);
         let images: String = rows[index].get(3);
         let created_at: DateTime<Utc> = rows[index].get(4);
         books.push(HomeBooksResponse {
             uid,
             title,
-            body,
+            content,
             images,
             created_at,
             doc_type: 2,
@@ -102,11 +102,10 @@ pub struct ChaptersByBookId {
     uid: i32,
     parent_id: Option<i32>,
     title: String,
-    body: String,
+    content: String,
     images: Option<String>,
     identity: i16,
     page_id: Option<i32>,
-    theme: i16,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -114,7 +113,7 @@ pub struct BookInfo {
     book_id: i32,
     user_id: i32,
     title: String,
-    body: String,
+    content: String,
     images: Option<String>,
     created_at: DateTime<Utc>,
 }
@@ -133,13 +132,13 @@ pub async fn get_book_chapters(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, identity, page_id, theme FROM book where book_id=$1 AND identity<=101 AND deleted_at is null",
+            "SELECT uid, parent_id, title, content, images, identity, page_id FROM book where book_id=$1 AND identity<=101 AND deleted_at is null",
             &[&book_request.book_id],
         )
         .await?;
     let book_row = conn
         .query_one(
-            "SELECT uid, user_id, title, body, images, created_at FROM books where uid=$1",
+            "SELECT uid, user_id, title, content, images, created_at FROM books where uid=$1",
             &[&book_request.book_id],
         )
         .await?;
@@ -148,7 +147,7 @@ pub async fn get_book_chapters(
         book_id: book_row.get(0),
         user_id: book_row.get(1),
         title: book_row.get(2),
-        body: book_row.get(3),
+        content: book_row.get(3),
         images: book_row.get(4),
         created_at: book_row.get(5),
     };
@@ -159,11 +158,10 @@ pub async fn get_book_chapters(
             uid: rows[index].get(0),
             parent_id: rows[index].get(1),
             title: rows[index].get(2),
-            body: rows[index].get(3),
+            content: rows[index].get(3),
             images: rows[index].get(4),
             identity: rows[index].get(5),
             page_id: rows[index].get(6),
-            theme: rows[index].get(7),
         });
     }
     Ok((
@@ -187,11 +185,10 @@ pub struct BookNodesByPageId {
     uid: i32,
     parent_id: Option<i32>,
     title: String,
-    body: String,
+    content: String,
     images: Option<String>,
     identity: i16,
     page_id: Option<i32>,
-    theme: i16,
 }
 
 pub async fn get_book_sections(
@@ -203,7 +200,7 @@ pub async fn get_book_sections(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, identity, page_id, theme FROM book where book_id=$1 AND page_id=$2 AND identity=102 and deleted_at is null",
+            "SELECT uid, parent_id, title, content, images, identity, page_id FROM book where book_id=$1 AND page_id=$2 AND identity=102 and deleted_at is null",
             &[&book_info.book_id, &book_info.page_id],
         )
         .await?;
@@ -214,20 +211,19 @@ pub async fn get_book_sections(
         let uid: i32 = rows[index].get(0);
         let parent_id: Option<i32> = rows[index].get(1);
         let title: String = rows[index].get(2);
-        let body: String = rows[index].get(3);
+        let content: String = rows[index].get(3);
         let images: Option<String> = rows[index].get(4);
         let identity: i16 = rows[index].get(5);
         let page_id: Option<i32> = rows[index].get(6);
-        let theme: i16 = rows[index].get(7);
+
         books.push(BookNodesByPageId {
             uid,
             parent_id,
             title,
-            body,
+            content,
             images,
             identity,
             page_id,
-            theme,
         })
     }
 
@@ -249,11 +245,10 @@ pub struct BookNodesBySectionId {
     uid: i32,
     parent_id: Option<i32>,
     title: String,
-    body: String,
+    content: String,
     images: Option<String>,
     identity: i16,
     page_id: Option<i32>,
-    theme: i16,
 }
 
 pub async fn get_book_sub_sections(
@@ -265,7 +260,7 @@ pub async fn get_book_sub_sections(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, identity, page_id, theme FROM book where book_id=$1 AND page_id=$2 AND identity=103 and deleted_at is null",
+            "SELECT uid, parent_id, title, content, images, identity, page_id FROM book where book_id=$1 AND page_id=$2 AND identity=103 and deleted_at is null",
             &[&book_info.book_id, &book_info.page_id],
         )
         .await?;
@@ -276,21 +271,19 @@ pub async fn get_book_sub_sections(
         let uid: i32 = rows[index].get(0);
         let parent_id: Option<i32> = rows[index].get(1);
         let title: String = rows[index].get(2);
-        let body: String = rows[index].get(3);
+        let content: String = rows[index].get(3);
         let images: Option<String> = rows[index].get(4);
         let identity: i16 = rows[index].get(5);
         let page_id: Option<i32> = rows[index].get(6);
-        let theme: i16 = rows[index].get(7);
 
         books.push(BookNodesBySectionId {
             uid,
             parent_id,
             title,
-            body,
+            content,
             images,
             identity,
             page_id,
-            theme,
         })
     }
 
@@ -327,14 +320,14 @@ pub async fn get_users_book(
 
     if book_ids.len() > 0 {
         let books_query =
-            "SELECT uid, title, body, images, created_at FROM books where uid=ANY($1)";
+            "SELECT uid, title, content, images, created_at FROM books where uid=ANY($1)";
         let book_rows = conn.query(books_query, &[&book_ids]).await?;
 
         for row in book_rows.iter() {
             books.push(HomeBooksResponse {
                 uid: row.get(0),
                 title: row.get(1),
-                body: row.get(2),
+                content: row.get(2),
                 images: row.get(3),
                 created_at: row.get(4),
                 doc_type: 2,

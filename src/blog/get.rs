@@ -15,7 +15,7 @@ use std::collections::HashSet;
 pub struct GetAllBlogs {
     uid: i32,
     title: String,
-    body: String,
+    content: String,
     images: String,
     created_at: DateTime<Utc>,
     doc_type: u8,
@@ -30,7 +30,7 @@ pub async fn get_all_blogs_by_page_no(
     let offset: i64 = (page_no - 1) * limit;
     let rows = conn
         .query(
-            "SELECT uid, title, body, images, created_at FROM blogs where deleted_at is null LIMIT $1 OFFSET $2",
+            "SELECT uid, title, content, images, created_at FROM blogs where deleted_at is null LIMIT $1 OFFSET $2",
             &[&limit, &offset],
         )
         .await?;
@@ -41,7 +41,7 @@ pub async fn get_all_blogs_by_page_no(
         blogs.push(GetAllBlogs {
             uid: rows[index].get(0),
             title: rows[index].get(1),
-            body: rows[index].get(2),
+            content: rows[index].get(2),
             images: rows[index].get(3),
             created_at: rows[index].get(4),
             doc_type: 1,
@@ -62,7 +62,7 @@ pub async fn get_all_blogs_by_user_id(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, title, body, images, created_at FROM blogs where deleted_at is null and user_id=$1",
+            "SELECT uid, title, content, images, created_at FROM blogs where deleted_at is null and user_id=$1",
             &[&user_id],
         )
         .await?;
@@ -73,7 +73,7 @@ pub async fn get_all_blogs_by_user_id(
         blogs.push(GetAllBlogs {
             uid: rows[index].get(0),
             title: rows[index].get(1),
-            body: rows[index].get(2),
+            content: rows[index].get(2),
             images: rows[index].get(3),
             created_at: rows[index].get(4),
             doc_type: 1,
@@ -93,9 +93,8 @@ pub struct BlogNode {
     blog_id: i32,
     parent_id: Option<i32>,
     title: String,
-    body: String,
+    content: String,
     images: Option<String>,
-    theme: i16,
 }
 
 #[derive(Deserialize)]
@@ -108,9 +107,8 @@ pub struct BlogInfo {
     uid: i32,
     user_id: i32,
     title: String,
-    body: String,
+    content: String,
     images: Option<String>,
-    theme: i16,
     created_at: DateTime<Utc>,
 }
 
@@ -123,13 +121,13 @@ pub async fn get_all_blog_nodes(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, body, images, theme FROM blog where blog_id=$1 and deleted_at is null",
+            "SELECT uid, parent_id, title, content, images FROM blog where blog_id=$1 and deleted_at is null",
             &[&blog_request.blog_id],
         )
         .await?;
     let blog_row = conn
         .query_one(
-            "SELECT uid, user_id, title, body, images, theme, created_at FROM blogs where uid=$1",
+            "SELECT uid, user_id, title, content, images, created_at FROM blogs where uid=$1",
             &[&blog_request.blog_id],
         )
         .await?;
@@ -138,10 +136,9 @@ pub async fn get_all_blog_nodes(
         uid: blog_row.get(0),
         user_id: blog_row.get(1),
         title: blog_row.get(2),
-        body: blog_row.get(3),
+        content: blog_row.get(3),
         images: blog_row.get(4),
         created_at: blog_row.get(6),
-        theme: 11,
     };
 
     let mut child_nodes: Vec<BlogNode> = Vec::new();
@@ -152,9 +149,8 @@ pub async fn get_all_blog_nodes(
             blog_id: blog_row.get(0),
             parent_id: rows[index].get(1),
             title: rows[index].get(2),
-            body: rows[index].get(3),
+            content: rows[index].get(3),
             images: rows[index].get(4),
-            theme: rows[index].get(5),
         });
     }
 
@@ -172,7 +168,7 @@ pub async fn get_all_blog_nodes(
 pub struct HomeBlogsResponse {
     uid: i32,
     title: String,
-    body: String,
+    content: String,
     images: String,
     created_at: DateTime<Utc>,
     doc_type: u8,
@@ -203,13 +199,13 @@ pub async fn get_users_blog(
 
     if blog_id_rows.len() > 0 {
         let blogs_query =
-            "SELECT uid, title, body, images, created_at FROM blogs where uid=ANY($1)";
+            "SELECT uid, title, content, images, created_at FROM blogs where uid=ANY($1)";
         let blog_rows = conn.query(blogs_query, &[&blog_ids]).await?;
         for row in blog_rows.iter() {
             blogs.push(HomeBlogsResponse {
                 uid: row.get(0),
                 title: row.get(1),
-                body: row.get(2),
+                content: row.get(2),
                 images: row.get(3),
                 created_at: row.get(4),
                 doc_type: 1,

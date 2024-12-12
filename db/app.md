@@ -8,11 +8,10 @@
 type DocumentNode = {
   uid: number;
   title: string;
-  body: string;
+  content: string;
   images: string[];
   user_id: number;
   tags: string[] | null;
-  theme: number;
 };
 ```
 
