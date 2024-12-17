@@ -95,6 +95,7 @@ pub struct BlogNode {
     title: String,
     content: String,
     images: Option<String>,
+    created_at: DateTime<Utc>,
 }
 
 #[derive(Deserialize)]
@@ -121,7 +122,7 @@ pub async fn get_all_blog_nodes(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, content, images FROM blog where blog_id=$1 and deleted_at is null",
+            "SELECT uid, parent_id, title, content, images, created_at FROM blog where blog_id=$1 and deleted_at is null",
             &[&blog_request.blog_id],
         )
         .await?;
@@ -138,7 +139,7 @@ pub async fn get_all_blog_nodes(
         title: blog_row.get(2),
         content: blog_row.get(3),
         images: blog_row.get(4),
-        created_at: blog_row.get(6),
+        created_at: blog_row.get(5),
     };
 
     let mut child_nodes: Vec<BlogNode> = Vec::new();
@@ -151,6 +152,7 @@ pub async fn get_all_blog_nodes(
             title: rows[index].get(2),
             content: rows[index].get(3),
             images: rows[index].get(4),
+            created_at: rows[index].get(5),
         });
     }
 

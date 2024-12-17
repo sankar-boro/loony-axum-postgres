@@ -20,10 +20,9 @@ CREATE TABLE blog (
     parentId timeuuid,
     userId INT,
     title varchar,
-    body TEXT.
-    url TEXT.
-    identity smallINT,
-    metadata TEXT.
+    body TEXT,
+    url TEXT,
+    metadata TEXT,
     createdAt timeuuid,
     updatedAt timeuuid,
     PRIMARY KEY (blogId, uniqueId)

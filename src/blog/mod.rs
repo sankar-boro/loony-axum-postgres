@@ -48,7 +48,6 @@ pub async fn create_blog(
     Json(body): Json<CreateBlog>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = session.get_user_id().await?;
-    let identity: i16 = 100;
     let images = &serde_json::to_string(&body.images).unwrap();
 
     let mut conn = pool.pg_pool.get().await?;
@@ -57,7 +56,7 @@ pub async fn create_blog(
         .prepare("INSERT INTO blogs(user_id, title, content, images) VALUES($1, $2, $3, $4) RETURNING uid")
         .await?;
     let insert_blog_query = conn
-        .prepare("INSERT INTO blog(user_id, blog_id, title, content, identity, images) VALUES($1, $2, $3, $4, $5, $6) RETURNING uid")
+        .prepare("INSERT INTO blog(user_id, blog_id, title, content, images) VALUES($1, $2, $3, $4, $5) RETURNING uid")
         .await?;
 
     let transaction = conn.transaction().await?;
@@ -74,14 +73,7 @@ pub async fn create_blog(
     transaction
         .execute(
             &insert_blog_query,
-            &[
-                &user_id,
-                &blog_id,
-                &body.title,
-                &body.content,
-                &identity,
-                &images,
-            ],
+            &[&user_id, &blog_id, &body.title, &body.content, &images],
         )
         .await?;
 
@@ -112,7 +104,6 @@ pub async fn create_blog(
         "blog_id": blog_id,
         "title": &body.title,
         "body": &body.content,
-        "identity": &identity,
         "images": &images,
         "user_id": &user_id
     });
@@ -153,6 +144,7 @@ pub async fn edit_blog(
     transaction
         .execute(&state_2, &[&body.title, &body.content, &images, &body.uid])
         .await?;
+    transaction.commit().await?;
 
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,

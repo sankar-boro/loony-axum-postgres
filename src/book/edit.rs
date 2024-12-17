@@ -36,11 +36,11 @@ pub async fn edit_book(
         body.book_id,
     );
     let state1 = conn
-        .prepare("UPDATE books SET title=$1, body=$2, images=$3 WHERE book_id=$4")
+        .prepare("UPDATE books SET title=$1, content=$2, images=$3 WHERE uid=$4")
         .await?;
-    let state2 = conn
-        .prepare("UPDATE book SET title=$1, body=$2, images=$3 WHERE book_id=$4")
-        .await?;
+    // let state2 = conn
+    //     .prepare("UPDATE book SET title=$1, content=$2, images=$3 WHERE book_id=$4")
+    //     .await?;
     let transaction = conn.transaction().await?;
     transaction
         .execute(
@@ -48,12 +48,12 @@ pub async fn edit_book(
             &[&body.title, &body.content, &images, &body.book_id],
         )
         .await?;
-    transaction
-        .execute(
-            &state2,
-            &[&body.title, &body.content, &images, &body.book_id],
-        )
-        .await?;
+    // transaction
+    //     .execute(
+    //         &state2,
+    //         &[&body.title, &body.content, &images, &body.book_id],
+    //     )
+    //     .await?;
     transaction.commit().await?;
 
     let edit_book = json!({
@@ -81,6 +81,7 @@ pub struct EditBookNode {
     images: Vec<Images>,
 }
 
+/// # Returns
 pub async fn edit_book_node(
     session: Session,
     State(pool): State<AppState>,
@@ -95,12 +96,23 @@ pub async fn edit_book_node(
         user_id,
         body.book_id,
     );
-    let _ = conn
-        .execute(
-            "UPDATE book SET title=$1, body=$2, images=$3 WHERE uid=$4",
-            &[&body.title, &body.content, &images, &body.uid],
-        )
-        .await?;
+    if body.images.len() > 0 {
+        let _ = conn
+            .execute(
+                "UPDATE book SET title=$1, content=$2, images=$3 WHERE uid=$4",
+                &[&body.title, &body.content, &images, &body.uid],
+            )
+            .await?;
+    }
+
+    if body.images.len() == 0 {
+        let _ = conn
+            .execute(
+                "UPDATE book SET title=$1, content=$2 WHERE uid=$3",
+                &[&body.title, &body.content, &body.uid],
+            )
+            .await?;
+    }
 
     Ok((
         StatusCode::OK,

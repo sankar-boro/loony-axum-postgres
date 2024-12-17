@@ -42,9 +42,9 @@ pub async fn create_book(
     let insert_books_query = conn
         .prepare("INSERT INTO books(user_id, title, content, images) VALUES($1, $2, $3, $4) RETURNING uid")
         .await?;
-    let insert_book_query = conn
-        .prepare("INSERT INTO book(user_id, book_id, title, content, identity, images) VALUES($1, $2, $3, $4, $5, $6) RETURNING uid")
-        .await?;
+    // let insert_book_query = conn
+    //     .prepare("INSERT INTO book(user_id, book_id, title, content, identity, images) VALUES($1, $2, $3, $4, $5, $6) RETURNING uid")
+    //     .await?;
 
     let transaction = conn.transaction().await?;
 
@@ -57,19 +57,19 @@ pub async fn create_book(
 
     let book_id: i32 = row.get(0);
 
-    transaction
-        .execute(
-            &insert_book_query,
-            &[
-                &user_id,
-                &book_id,
-                &body.title,
-                &body.content,
-                &identity,
-                &images,
-            ],
-        )
-        .await?;
+    // transaction
+    //     .execute(
+    //         &insert_book_query,
+    //         &[
+    //             &user_id,
+    //             &book_id,
+    //             &body.title,
+    //             &body.content,
+    //             &identity,
+    //             &images,
+    //         ],
+    //     )
+    //     .await?;
 
     transaction.commit().await?;
 
