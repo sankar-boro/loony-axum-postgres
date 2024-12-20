@@ -23,7 +23,7 @@ pub struct CreateBook {
     title: String,
     content: String,
     images: Vec<Images>,
-    tags: Vec<String>,
+    tags: Option<Vec<String>>,
 }
 
 // @Create
@@ -42,9 +42,9 @@ pub async fn create_book(
     let insert_books_query = conn
         .prepare("INSERT INTO books(user_id, title, content, images) VALUES($1, $2, $3, $4) RETURNING uid")
         .await?;
-    // let insert_book_query = conn
-    //     .prepare("INSERT INTO book(user_id, book_id, title, content, identity, images) VALUES($1, $2, $3, $4, $5, $6) RETURNING uid")
-    //     .await?;
+    let insert_book_query = conn
+        .prepare("INSERT INTO book(user_id, book_id, title, content, identity, images) VALUES($1, $2, $3, $4, $5, $6) RETURNING uid")
+        .await?;
 
     let transaction = conn.transaction().await?;
 
@@ -57,33 +57,34 @@ pub async fn create_book(
 
     let book_id: i32 = row.get(0);
 
-    // transaction
-    //     .execute(
-    //         &insert_book_query,
-    //         &[
-    //             &user_id,
-    //             &book_id,
-    //             &body.title,
-    //             &body.content,
-    //             &identity,
-    //             &images,
-    //         ],
-    //     )
-    //     .await?;
+    transaction
+        .execute(
+            &insert_book_query,
+            &[
+                &user_id,
+                &book_id,
+                &body.title,
+                &body.content,
+                &identity,
+                &images,
+            ],
+        )
+        .await?;
 
     transaction.commit().await?;
 
-    let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
-    let tags = body.tags;
-    tags.iter().for_each(|__tag| {
-        all_tags.push((book_id, user_id, __tag, 1));
-    });
-
-    conn.query(
-        &insert_tags("book_tags", "(book_id, user_id, tag, score)", all_tags),
-        &[],
-    )
-    .await?;
+    if let Some(tags) = body.tags {
+        let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
+        tags.iter().for_each(|__tag| {
+            all_tags.push((book_id, user_id, __tag, 1));
+        });
+    
+        conn.query(
+            &insert_tags("book_tags", "(book_id, user_id, tag, score)", all_tags),
+            &[],
+        )
+        .await?;
+    }
 
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,
@@ -117,7 +118,7 @@ pub struct AddBookNode {
     parent_id: i32,
     page_id: Option<i32>,
     identity: i16,
-    tags: Option<String>,
+    tags: Option<Vec<String>>,
     parent_identity: i16,
 }
 
@@ -130,6 +131,7 @@ pub async fn append_book_node(
         return Err(AppError::InternalServerError(String::from("Not Allowed")));
     }
     let user_id = session.get_user_id().await?;
+    let book_id = body.book_id;
     let mut conn = pool.pg_pool.get().await?;
 
     let images = &serde_json::to_string(&body.images).unwrap();
@@ -143,7 +145,7 @@ pub async fn append_book_node(
 
     let state1 = conn
     .prepare(
-        "INSERT INTO book(book_id, page_id, parent_id, title, content, identity, images) values($1, $2, $3, $4, $5, $6, $7) returning uid",
+        "INSERT INTO book(user_id, book_id, page_id, parent_id, title, content, identity, images) values($1, $2, $3, $4, $5, $6, $7, $8) returning uid",
     )
     .await?;
     let state2 = conn
@@ -155,6 +157,7 @@ pub async fn append_book_node(
         .query_one(
             &state1,
             &[
+                &user_id,
                 &body.book_id,
                 &body.page_id,
                 &body.parent_id,
@@ -187,6 +190,19 @@ pub async fn append_book_node(
         }
     }
     transaction.commit().await?;
+
+    if let Some(tags) = body.tags {
+        let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
+        tags.iter().for_each(|__tag| {
+            all_tags.push((book_id, user_id, __tag, 1));
+        });
+    
+        conn.query(
+            &insert_tags("book_tags", "(book_id, user_id, tag, score)", all_tags),
+            &[],
+        )
+        .await?;
+    }
 
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,
@@ -260,6 +276,12 @@ pub struct DeleteBookNode {
     parent_id: i32,
 }
 
+#[derive(Deserialize, Serialize)]
+struct UpdateNode {
+    uid: i32,
+    parent_id: i32,
+}
+
 pub async fn delete_book_node(
     State(pool): State<AppState>,
     Json(body): Json<DeleteBookNode>,
@@ -315,14 +337,19 @@ pub async fn delete_book_node(
     let num_deleted_rows = transaction
         .execute(&state1, &[&current_time, &delete_row_ids])
         .await?;
-
-    let mut updated_id: Option<i32> = None;
+    
+    let mut update_response: Option<UpdateNode> = None;
     if let Some(update_row) = update_row_exist {
-        let update_id: i32 = update_row.get(0);
-        transaction
+        if !update_row.is_empty() {
+            let update_id: i32 = update_row.get(0);
+            transaction
             .execute(&update_bot_node_query, &[&body.parent_id, &update_id])
             .await?;
-        updated_id = Some(update_id);
+            update_response = Some(UpdateNode {
+                uid: update_id,
+                parent_id: body.parent_id,
+            })
+        }
     }
     transaction.commit().await?;
 
@@ -331,10 +358,7 @@ pub async fn delete_book_node(
         [(header::CONTENT_TYPE, "application/json")],
         Json(json!({
             "delete_nodes": delete_row_ids,
-            "update_node": {
-                "uid": updated_id,
-                "parent_id": &body.parent_id,
-            },
+            "update_node": update_response,
             "rows": num_deleted_rows
         })),
     ))
