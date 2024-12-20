@@ -1,8 +1,6 @@
+DROP TABLE IF EXISTS blog_tags;
 DROP TABLE IF EXISTS blogs;
 DROP TABLE IF EXISTS blog;
-
-ALTER TABLE blogs DROP COLUMN IF EXISTS blogs_search_vector;
-ALTER TABLE blog DROP COLUMN IF EXISTS blog_search_vector;
 
 CREATE TABLE blogs (
     uid serial PRIMARY KEY,
@@ -37,10 +35,6 @@ CREATE TABLE blog (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL
 );
-
-
--- Create and index to select chapters and sections
-CREATE INDEX idx_blog_page_id ON blog(blog_id, page_id);
 
 -- create search on title and tags for blog
 ALTER TABLE blog

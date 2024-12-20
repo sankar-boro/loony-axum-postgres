@@ -100,6 +100,7 @@ pub async fn get_all_books_by_user_id(
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ChaptersByBookId {
     uid: i32,
+    book_id: i32,
     parent_id: Option<i32>,
     title: String,
     content: String,
@@ -110,12 +111,14 @@ pub struct ChaptersByBookId {
 
 #[derive(Deserialize, Serialize)]
 pub struct BookInfo {
+    uid: i32,
     book_id: i32,
     user_id: i32,
     title: String,
     content: String,
     images: Option<String>,
     created_at: DateTime<Utc>,
+    identity: i32,
 }
 
 #[derive(Deserialize)]
@@ -144,18 +147,21 @@ pub async fn get_book_chapters(
         .await?;
 
     let main_node = BookInfo {
-        book_id: book_row.get(0),
+        uid: book_row.get(0),
+        book_id: book_request.book_id,
         user_id: book_row.get(1),
         title: book_row.get(2),
         content: book_row.get(3),
         images: book_row.get(4),
         created_at: book_row.get(5),
+        identity: 100,
     };
 
     let mut child_nodes: Vec<ChaptersByBookId> = Vec::new();
     for (index, _) in rows.iter().enumerate() {
         child_nodes.push(ChaptersByBookId {
             uid: rows[index].get(0),
+            book_id: book_request.book_id,
             parent_id: rows[index].get(1),
             title: rows[index].get(2),
             content: rows[index].get(3),

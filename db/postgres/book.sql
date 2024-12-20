@@ -1,8 +1,6 @@
+DROP TABLE IF EXISTS book_tags;
 DROP TABLE IF EXISTS books;
 DROP TABLE IF EXISTS book;
-
-ALTER TABLE books DROP COLUMN IF EXISTS books_search_vector;
-ALTER TABLE book DROP COLUMN IF EXISTS book_search_vector;
 
 CREATE TABLE books (
     uid serial PRIMARY KEY,

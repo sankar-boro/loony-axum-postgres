@@ -55,9 +55,9 @@ pub async fn create_blog(
     let insert_blogs_query = conn
         .prepare("INSERT INTO blogs(user_id, title, content, images) VALUES($1, $2, $3, $4) RETURNING uid")
         .await?;
-    let insert_blog_query = conn
-        .prepare("INSERT INTO blog(user_id, blog_id, title, content, images) VALUES($1, $2, $3, $4, $5) RETURNING uid")
-        .await?;
+    // let insert_blog_query = conn
+    //     .prepare("INSERT INTO blog(user_id, blog_id, title, content, images) VALUES($1, $2, $3, $4, $5) RETURNING uid")
+    //     .await?;
 
     let transaction = conn.transaction().await?;
 
@@ -70,12 +70,12 @@ pub async fn create_blog(
 
     let blog_id: i32 = row.get(0);
 
-    transaction
-        .execute(
-            &insert_blog_query,
-            &[&user_id, &blog_id, &body.title, &body.content, &images],
-        )
-        .await?;
+    // transaction
+    //     .execute(
+    //         &insert_blog_query,
+    //         &[&user_id, &blog_id, &body.title, &body.content, &images],
+    //     )
+    //     .await?;
 
     let score: i32 = 1;
 
@@ -166,7 +166,7 @@ pub struct AddBlogNode {
     content: String,
     images: Vec<Images>,
     parent_id: i32,
-    tags: Option<String>,
+    tags: Option<Vec<String>>,
 }
 
 pub async fn append_blog_node(
@@ -187,7 +187,7 @@ pub async fn append_blog_node(
 
     let insert_statement = conn
         .prepare(
-            "INSERT INTO blog(blog_id, parent_id, title, content, images, tags) values($1, $2, $3, $4, $5, $6) returning uid"
+            "INSERT INTO blog(user_id, blog_id, parent_id, title, content, images) values($1, $2, $3, $4, $5, $6) returning uid"
         )
         .await?;
 
@@ -200,18 +200,18 @@ pub async fn append_blog_node(
         .query_one(
             &insert_statement,
             &[
+                &user_id,
                 &body.blog_id,
                 &body.parent_id,
                 &body.title,
                 &body.content,
-                &images,
-                &body.tags,
+                &images
             ],
         )
         .await?;
 
     let new_node_uid: i32 = new_node.get(0);
-
+    
     let mut update_row_uid: Option<i32> = None;
     if let Ok(update_row) = update_row {
         if !update_row.is_empty() {
@@ -221,8 +221,23 @@ pub async fn append_blog_node(
                 .await?;
         }
     }
+
     transaction.commit().await?;
 
+    if let Some(tags) = &body.tags {
+        let score: i32 = 1;
+        let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
+        tags.iter().for_each(|x| {
+            all_tags.push((body.blog_id, user_id, x, score));
+        });
+    
+        conn.query(
+            &insert_tags("blog_tags", "(blog_id, user_id, tag, score)", all_tags),
+            &[],
+        )
+        .await?;
+    }
+    
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,
         &pool.dirs.blog_upload,
@@ -297,7 +312,7 @@ struct UpdateNode {
 #[derive(Deserialize, Serialize)]
 pub struct DeleteBlogNode {
     delete_node: DeleteNode,
-    update_node: UpdateNode,
+    update_node: Option<UpdateNode>,
 }
 
 pub async fn delete_blog_node(
@@ -318,12 +333,14 @@ pub async fn delete_blog_node(
     transaction
         .execute(&state1, &[&current_time, &body.delete_node.uid])
         .await?;
-    transaction
-        .execute(
-            &state2,
-            &[&body.update_node.parent_id, &body.update_node.uid],
-        )
-        .await?;
+    if let Some(update_node) = &body.update_node {
+        transaction
+            .execute(
+                &state2,
+                &[&update_node.parent_id, &update_node.uid],
+            )
+            .await?;
+    }
     transaction.commit().await?;
 
     Ok((
