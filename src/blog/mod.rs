@@ -55,9 +55,9 @@ pub async fn create_blog(
     let insert_blogs_query = conn
         .prepare("INSERT INTO blogs(user_id, title, content, images) VALUES($1, $2, $3, $4) RETURNING uid")
         .await?;
-    // let insert_blog_query = conn
-    //     .prepare("INSERT INTO blog(user_id, blog_id, title, content, images) VALUES($1, $2, $3, $4, $5) RETURNING uid")
-    //     .await?;
+    let insert_blog_query = conn
+        .prepare("INSERT INTO blog(user_id, blog_id, title, content, images) VALUES($1, $2, $3, $4, $5) RETURNING uid")
+        .await?;
 
     let transaction = conn.transaction().await?;
 
@@ -70,12 +70,12 @@ pub async fn create_blog(
 
     let blog_id: i32 = row.get(0);
 
-    // transaction
-    //     .execute(
-    //         &insert_blog_query,
-    //         &[&user_id, &blog_id, &body.title, &body.content, &images],
-    //     )
-    //     .await?;
+    transaction
+        .execute(
+            &insert_blog_query,
+            &[&user_id, &blog_id, &body.title, &body.content, &images],
+        )
+        .await?;
 
     let score: i32 = 1;
 
@@ -179,7 +179,7 @@ pub async fn append_blog_node(
 
     let update_row = conn
         .query_one(
-            "SELECT uid, parent_id from blog where parent_id=$1",
+            "SELECT uid, parent_id from blog where parent_id=$1 and deleted_at is NULL",
             &[&body.parent_id],
         )
         .await;
@@ -212,13 +212,18 @@ pub async fn append_blog_node(
 
     let new_node_uid: i32 = new_node.get(0);
     
-    let mut update_row_uid: Option<i32> = None;
+    // let mut update_row_uid: Option<i32> = None;
+    let mut update_response: Option<UpdateNode> = None;
     if let Ok(update_row) = update_row {
         if !update_row.is_empty() {
-            update_row_uid = update_row.get(0);
+            let update_row_uid: i32 = update_row.get(0);
             transaction
                 .execute(&update_statement, &[&new_node_uid, &update_row_uid])
                 .await?;
+            update_response = Some(UpdateNode {
+                uid: update_row_uid,
+                parent_id: new_node_uid,
+            })
         }
     }
 
@@ -257,10 +262,7 @@ pub async fn append_blog_node(
                 "images": &images,
                 "tags": &body.tags
             },
-            "update_node": {
-                "uid": update_row_uid,
-                "parent_id": new_node_uid
-            }
+            "update_node": update_response
         })),
     ))
 }

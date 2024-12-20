@@ -135,7 +135,7 @@ pub async fn get_book_chapters(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, content, images, identity, page_id FROM book where book_id=$1 AND identity<=101 AND deleted_at is null",
+            "SELECT uid, parent_id, title, content, images, identity, page_id FROM book where book_id=$1 AND identity<=101 AND deleted_at is null and parent_id is not null",
             &[&book_request.book_id],
         )
         .await?;

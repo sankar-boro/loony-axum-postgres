@@ -122,7 +122,7 @@ pub async fn get_all_blog_nodes(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, content, images, created_at FROM blog where blog_id=$1 and deleted_at is null",
+            "SELECT uid, parent_id, title, content, images, created_at FROM blog where blog_id=$1 and deleted_at is null and parent_id is not null",
             &[&blog_request.blog_id],
         )
         .await?;
