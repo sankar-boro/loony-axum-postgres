@@ -347,3 +347,25 @@ pub async fn get_users_book(
         Json(books),
     ))
 }
+
+
+pub async fn test_query(State(pool): State<AppState>) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
+    let page_ids: Vec<i32> = Vec::from([1, 2]);
+    let rows = conn
+        .query("SELECT uid FROM book where page_id = ANY($1)", &[&page_ids])
+        .await?;
+
+    for i in rows.iter() {
+        let uid: i32 = i.get(0);
+        println!("{}", uid);
+    }
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(json!({
+            "data": "book deleted"
+        })),
+    ))
+}

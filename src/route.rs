@@ -8,7 +8,7 @@ use crate::{
             get_all_blog_nodes, get_all_blogs_by_page_no, get_all_blogs_by_user_id, get_users_blog,
         },
     },
-    book::{get::get_users_book, test_query},
+    book::get::{get_users_book, test_query},
     likes::tag::{
         get_all_tags_user_can_follow, get_all_tags_user_has_followed, user_followed_a_tag,
         user_removed_a_followed_tag,
@@ -25,7 +25,8 @@ use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
 
 use crate::book::{
-    append_book_node, create_book, delete_book, delete_book_node,
+    create::{append_book_node, create_book}, 
+    delete::{delete_book, delete_book_node},
     edit::{edit_book, edit_book_node},
     get::{
         get_all_books_by_page_no, get_all_books_by_user_id, get_book_chapters, get_book_sections,
