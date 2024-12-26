@@ -1,6 +1,3 @@
-DROP TABLE IF EXISTS book_tags;
-DROP TABLE IF EXISTS blog_tags;
-
 CREATE TABLE book_tags (
     uid serial PRIMARY KEY,
     book_id INT NOT NULL REFERENCES books(uid) ON DELETE CASCADE,

@@ -1,7 +1,3 @@
-DROP TABLE IF EXISTS blog_tags;
-DROP TABLE IF EXISTS blogs;
-DROP TABLE IF EXISTS blog;
-
 CREATE TABLE blogs (
     uid serial PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,

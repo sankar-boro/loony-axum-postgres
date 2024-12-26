@@ -1,7 +1,3 @@
-DROP TABLE IF EXISTS book_tags;
-DROP TABLE IF EXISTS books;
-DROP TABLE IF EXISTS book;
-
 CREATE TABLE books (
     uid serial PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,

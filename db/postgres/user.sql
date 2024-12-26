@@ -1,5 +1,3 @@
-DROP TABLE IF EXISTS users;
-
 CREATE TABLE users (
     uid serial PRIMARY KEY NOT NULL,
     fname VARCHAR(25) NOT NULL,
