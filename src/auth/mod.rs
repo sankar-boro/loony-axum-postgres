@@ -39,6 +39,7 @@ pub struct SignupForm {
     email: String,
     #[validate(length(min = 6))]
     password: String,
+    #[validate(length(min = 3))]
     fname: String,
     lname: String,
 }
