@@ -136,7 +136,7 @@ pub async fn login(
     )?;
 
     let cookie = CookieBuilder::new("Authorization", token)
-        .same_site(cookie::SameSite::None)
+        .same_site(cookie::SameSite::Strict)
         .secure(true)
         .http_only(true)
         .max_age(Duration::days(3))

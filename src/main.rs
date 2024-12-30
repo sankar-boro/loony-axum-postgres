@@ -3,8 +3,6 @@ mod blog;
 mod book;
 mod error;
 mod file;
-#[macro_use]
-mod credentials;
 mod likes;
 mod route;
 mod search;

@@ -1,4 +1,3 @@
-use crate::credentials;
 use crate::user::{get_subscribed_users, subscribe_user, un_subscribe_user};
 use crate::{
     auth::logout,
@@ -80,12 +79,6 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         )
         .route("/logout", post(logout));
 
-    let cred_routes = Router::new()
-        .route("/add", post(credentials::add))
-        .route("/delete/:uid", post(credentials::delete))
-        .route("/edit", post(credentials::edit))
-        .route("/get/:user_id", get(credentials::get));
-
     let blog_routes = Router::new()
         .route("/create", post(create_blog))
         .route("/edit/main", post(edit_blog))
@@ -137,7 +130,6 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .nest("/api/auth", auth_routes)
         .nest("/api/blog", blog_routes)
         .nest("/api/book", book_routes)
-        .nest("/api/creds", cred_routes)
         .nest("/api/tag", tag_routes)
         .nest("/api/user", user_routes)
         .route("/api/upload_file", post(upload_file))
