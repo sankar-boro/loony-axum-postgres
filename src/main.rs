@@ -40,10 +40,10 @@ pub struct AppState {
 }
 
 async fn init() -> AppState {
-    let pg_host = std::env::var("LOONY_API_PG_HOSTNAME").unwrap();
-    let pg_user = std::env::var("LOONY_API_PG_USERNAME").unwrap();
-    let pg_dbname = std::env::var("LOONY_API_PG_DBNAME").unwrap();
-    let pg_password = std::env::var("LOONY_API_PG_PASSWORD").unwrap();
+    let pg_host = std::env::var("V1_PG_HOSTNAME").unwrap();
+    let pg_user = std::env::var("V1_PG_USERNAME").unwrap();
+    let pg_dbname = std::env::var("V1_PG_DBNAME").unwrap();
+    let pg_password = std::env::var("V1_PG_PASSWORD").unwrap();
 
     // set up connection pool
     let pg_manager = PostgresConnectionManager::new_from_stringlike(
@@ -71,9 +71,9 @@ async fn init() -> AppState {
 #[tokio::main]
 async fn main() {
     // log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
-    let host = std::env::var("LOONY_API_HOSTNAME").unwrap();
-    let port = std::env::var("LOONY_API_PORT").unwrap();
-    let origins = std::env::var("LOONY_API_ALLOWED_ORIGINS").unwrap();
+    let host = std::env::var("V1_HOSTNAME").unwrap();
+    let port = std::env::var("V1_PORT").unwrap();
+    let origins = std::env::var("V1_ALLOWED_ORIGINS").unwrap();
 
     tracing_subscriber::registry()
         .with(
