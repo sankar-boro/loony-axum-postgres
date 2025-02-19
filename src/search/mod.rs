@@ -15,7 +15,7 @@ pub fn init_search() -> Search {
     let index_path = TempDir::new().unwrap();
     let mut schema_builder = Schema::builder();
     schema_builder.add_text_field("title", TEXT | STORED);
-    schema_builder.add_text_field("body", TEXT);
+    schema_builder.add_text_field("content", TEXT);
     let schema = schema_builder.build();
     let index = Index::create_in_dir(&index_path, schema.clone()).unwrap();
     let index_writer: IndexWriter = index.writer(50_000_000).unwrap();

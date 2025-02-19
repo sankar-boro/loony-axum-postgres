@@ -93,7 +93,7 @@ pub async fn create_book(
         "user_id": &user_id,
         "book_id": book_id,
         "title": &body.title,
-        "body": &body.content,
+        "content": &body.content,
         "identity": &identity,
         "images": &images
     });
@@ -215,7 +215,7 @@ pub async fn append_book_node(
                 "uid": new_node_id,
                 "parent_id": &body.parent_id,
                 "title": &body.title,
-                "body": &body.content,
+                "content": &body.content,
                 "images": &images,
                 "identity": &body.identity,
                 "page_id": &body.page_id

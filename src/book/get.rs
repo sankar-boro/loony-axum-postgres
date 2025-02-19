@@ -326,7 +326,7 @@ pub async fn get_users_book(
 
     if book_ids.len() > 0 {
         let books_query =
-            "SELECT uid, title, content, images, created_at FROM books where uid=ANY($1)";
+            "SELECT uid, title, content, images, created_at FROM books where uid=ANY($1) AND deleted_at is NULL";
         let book_rows = conn.query(books_query, &[&book_ids]).await?;
 
         for row in book_rows.iter() {

@@ -59,7 +59,7 @@ pub async fn edit_book(
     let edit_book = json!({
         "book_id": &body.book_id,
         "title": &body.title,
-        "body": &body.content,
+        "content": &body.content,
         "book_id": &body.book_id,
         "images": &images
     });

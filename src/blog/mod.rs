@@ -103,7 +103,7 @@ pub async fn create_blog(
     let new_blog = json!({
         "blog_id": blog_id,
         "title": &body.title,
-        "body": &body.content,
+        "content": &body.content,
         "images": &images,
         "user_id": &user_id
     });
@@ -258,7 +258,7 @@ pub async fn append_blog_node(
                 "uid": new_node_uid,
                 "parent_id": &body.parent_id,
                 "title": &body.title,
-                "body": &body.content,
+                "content": &body.content,
                 "images": &images,
                 "tags": &body.tags
             },

@@ -44,7 +44,7 @@ pub async fn delete_book(
         .prepare("UPDATE book SET deleted_at=$1 WHERE book_id=$2")
         .await?;
     let state2 = conn
-        .prepare("UPDATE books SET deleted_at=$1 WHERE book_id=$2")
+        .prepare("UPDATE books SET deleted_at=$1 WHERE uid=$2")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
