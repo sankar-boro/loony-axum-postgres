@@ -50,36 +50,6 @@ macro_rules! fetch_books_by_book_ids {
     }};
 }
 
-/// Book,
-/// Where doc_id and page_id and identity=103 and deleted in null;
-#[macro_export]
-macro_rules! fetch_book_nodes_by_page_id {
-    ($conn:expr, $doc_id:expr, $page_id:expr) => {{
-        use tokio_postgres::Row;
-        let rows: Vec<Row> = $conn
-            .query(
-                "SELECT uid, parent_id, title, content, images, identity, page_id FROM book where doc_id=$1 AND page_id=$2 AND identity=103 and deleted_at is null",
-                &[&$doc_id, &$page_id],
-            )
-            .await?;
-
-        let books = rows
-        .iter()
-        .map(|row| BookNodesBySectionId {
-            uid: row.get(0),
-            parent_id: row.get(1),
-            title: row.get(2),
-            content: row.get(3),
-            images:  row.get(4),
-            identity: row.get(5),
-            page_id: row.get(6),
-        })
-        .collect::<Vec<BookNodesBySectionId>>();
-
-        Ok::<_, AppError>(books)
-    }};
-}
-
 #[macro_export]
 macro_rules! fetch_book_pages {
     ($conn:expr, $doc_id:expr) => {{

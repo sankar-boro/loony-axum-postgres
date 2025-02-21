@@ -1,7 +1,4 @@
 use crate::error::AppError;
-use crate::traits::{Images, MoveImages};
-use crate::utils::doc::insert_tags;
-use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
     extract::State,
@@ -11,8 +8,7 @@ use axum::{
 };
 use chrono::Local;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use tower_sessions::Session;
+use serde_json::json;
 
 #[derive(Deserialize, Serialize)]
 pub struct DeleteBook {

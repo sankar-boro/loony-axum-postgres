@@ -8,7 +8,6 @@ use crate::{
             get_all_blog_nodes, get_all_blogs_by_page_no, get_all_blogs_by_user_id, get_users_blog,
         },
     },
-    book::get::{get_users_book, test_query},
     likes::tag::{
         get_all_tags_user_can_follow, get_all_tags_user_has_followed, user_followed_a_tag,
         user_removed_a_followed_tag,
@@ -29,8 +28,8 @@ use crate::book::{
     delete::{delete_book, delete_book_node},
     edit::{edit_book, edit_book_node},
     get::{
-        get_all_books_by_page_no, get_all_books_by_user_id, get_book_chapters, get_book_sections,
-        get_book_sub_sections,
+        get_all_books_by_page_no, get_all_books_by_user_id,
+        get_users_book
     },
 };
 use crate::file::{get_blog_file, get_book_file, get_tmp_file, upload_file};
@@ -99,13 +98,9 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/delete", post(delete_book))
         .route("/delete/node", post(delete_book_node))
         .route("/append/node", post(append_book_node))
-        .route("/get/nodes", get(get_book_chapters))
-        .route("/get/chapters", get(get_book_chapters))
         .route("/get/chapter", get(get_chapter_details))
         .route("/get/section", get(get_section_details))
-        .route("/get/sections", get(get_book_sections))
         .route("/get/nav", get(get_book_chapters_and_sections))
-        .route("/get/sub_sections", get(get_book_sub_sections))
         .route("/get/:user_id/get_users_book", get(get_users_book))
         .route("/get/:page_no/by_page", get(get_all_books_by_page_no))
         .route("/get/:uid/user_books", get(get_all_books_by_user_id));
@@ -140,6 +135,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/v1/blog/:uid/:size/:filename", get(get_blog_file))
         .route("/v1/book/:uid/:size/:filename", get(get_book_file))
         .route("/v1/tmp/:uid/:size/:filename", get(get_tmp_file))
+        .route("/v1", get(home))
         .with_state(connection)
         .layer(cors)
         .layer(session_layer)

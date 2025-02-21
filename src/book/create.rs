@@ -9,7 +9,6 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use chrono::Local;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tower_sessions::Session;
@@ -141,7 +140,7 @@ pub async fn append_book_node(
 
     let state1 = conn
     .prepare(
-        "INSERT INTO book(user_id, book_id, page_id, parent_id, title, content, identity, images) values($1, $2, $3, $4, $5, $6, $7, $8) returning uid",
+        "INSERT INTO book(user_id, doc_id, page_id, parent_id, title, content, identity, images) values($1, $2, $3, $4, $5, $6, $7, $8) returning uid",
     )
     .await?;
     let state2 = conn
@@ -194,7 +193,7 @@ pub async fn append_book_node(
         });
     
         conn.query(
-            &insert_tags("book_tags", "(book_id, user_id, tag, score)", all_tags),
+            &insert_tags("book_tags", "(doc_id, user_id, tag, score)", all_tags),
             &[],
         )
         .await?;
