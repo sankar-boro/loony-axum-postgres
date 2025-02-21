@@ -1,3 +1,4 @@
+use crate::book::get::{get_book_chapters_and_sections, get_chapter_details, get_section_details};
 use crate::user::{get_subscribed_users, subscribe_user, un_subscribe_user};
 use crate::{
     auth::logout,
@@ -100,7 +101,10 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/append/node", post(append_book_node))
         .route("/get/nodes", get(get_book_chapters))
         .route("/get/chapters", get(get_book_chapters))
+        .route("/get/chapter", get(get_chapter_details))
+        .route("/get/section", get(get_section_details))
         .route("/get/sections", get(get_book_sections))
+        .route("/get/nav", get(get_book_chapters_and_sections))
         .route("/get/sub_sections", get(get_book_sub_sections))
         .route("/get/:user_id/get_users_book", get(get_users_book))
         .route("/get/:page_no/by_page", get(get_all_books_by_page_no))
