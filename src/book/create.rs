@@ -38,7 +38,7 @@ pub async fn create_book(
         .prepare("INSERT INTO books(user_id, title, content, images) VALUES($1, $2, $3, $4) RETURNING uid")
         .await?;
     let insert_book_query = conn
-        .prepare("INSERT INTO book(user_id, book_id, title, content, identity, images) VALUES($1, $2, $3, $4, $5, $6) RETURNING uid")
+        .prepare("INSERT INTO book(user_id, doc_id, title, content, identity, images) VALUES($1, $2, $3, $4, $5, $6) RETURNING uid")
         .await?;
 
     let transaction = conn.transaction().await?;
@@ -50,14 +50,14 @@ pub async fn create_book(
         )
         .await?;
 
-    let book_id: i32 = row.get(0);
+    let doc_id: i32 = row.get(0);
 
     transaction
         .execute(
             &insert_book_query,
             &[
                 &user_id,
-                &book_id,
+                &doc_id,
                 &body.title,
                 &body.content,
                 &identity,
@@ -71,11 +71,11 @@ pub async fn create_book(
     if let Some(tags) = body.tags {
         let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
         tags.iter().for_each(|__tag| {
-            all_tags.push((book_id, user_id, __tag, 1));
+            all_tags.push((doc_id, user_id, __tag, 1));
         });
     
         conn.query(
-            &insert_tags("book_tags", "(book_id, user_id, tag, score)", all_tags),
+            &insert_tags("book_tags", "(doc_id, user_id, tag, score)", all_tags),
             &[],
         )
         .await?;
@@ -85,12 +85,12 @@ pub async fn create_book(
         &pool.dirs.tmp_upload,
         &pool.dirs.book_upload,
         user_id,
-        book_id,
+        doc_id,
     );
 
     let new_book = json!({
         "user_id": &user_id,
-        "book_id": book_id,
+        "doc_id": doc_id,
         "title": &body.title,
         "content": &body.content,
         "identity": &identity,
@@ -106,7 +106,7 @@ pub async fn create_book(
 
 #[derive(Deserialize, Serialize)]
 pub struct AddBookNode {
-    book_id: i32,
+    doc_id: i32,
     title: String,
     content: String,
     images: Vec<Images>,
@@ -126,7 +126,7 @@ pub async fn append_book_node(
         return Err(AppError::InternalServerError(String::from("Not Allowed")));
     }
     let user_id = session.get_user_id().await?;
-    let book_id = body.book_id;
+    let doc_id = body.doc_id;
     let mut conn = pool.pg_pool.get().await?;
 
     let images = &serde_json::to_string(&body.images).unwrap();
@@ -153,7 +153,7 @@ pub async fn append_book_node(
             &state1,
             &[
                 &user_id,
-                &body.book_id,
+                &body.doc_id,
                 &body.page_id,
                 &body.parent_id,
                 &body.title,
@@ -189,7 +189,7 @@ pub async fn append_book_node(
     if let Some(tags) = body.tags {
         let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
         tags.iter().for_each(|__tag| {
-            all_tags.push((book_id, user_id, __tag, 1));
+            all_tags.push((doc_id, user_id, __tag, 1));
         });
     
         conn.query(
@@ -203,7 +203,7 @@ pub async fn append_book_node(
         &pool.dirs.tmp_upload,
         &pool.dirs.book_upload,
         user_id,
-        body.book_id,
+        body.doc_id,
     );
 
     Ok((

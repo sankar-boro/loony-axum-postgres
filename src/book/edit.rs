@@ -14,7 +14,7 @@ use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 pub struct EditBook {
-    book_id: i32,
+    doc_id: i32,
     title: String,
     content: String,
     images: Vec<Images>,
@@ -33,34 +33,34 @@ pub async fn edit_book(
         &pool.dirs.tmp_upload,
         &pool.dirs.book_upload,
         user_id,
-        body.book_id,
+        body.doc_id,
     );
     let state1 = conn
         .prepare("UPDATE books SET title=$1, content=$2, images=$3 WHERE uid=$4")
         .await?;
     // let state2 = conn
-    //     .prepare("UPDATE book SET title=$1, content=$2, images=$3 WHERE book_id=$4")
+    //     .prepare("UPDATE book SET title=$1, content=$2, images=$3 WHERE doc_id=$4")
     //     .await?;
     let transaction = conn.transaction().await?;
     transaction
         .execute(
             &state1,
-            &[&body.title, &body.content, &images, &body.book_id],
+            &[&body.title, &body.content, &images, &body.doc_id],
         )
         .await?;
     // transaction
     //     .execute(
     //         &state2,
-    //         &[&body.title, &body.content, &images, &body.book_id],
+    //         &[&body.title, &body.content, &images, &body.doc_id],
     //     )
     //     .await?;
     transaction.commit().await?;
 
     let edit_book = json!({
-        "book_id": &body.book_id,
+        "doc_id": &body.doc_id,
         "title": &body.title,
         "content": &body.content,
-        "book_id": &body.book_id,
+        "doc_id": &body.doc_id,
         "images": &images
     });
 
@@ -77,7 +77,7 @@ pub struct EditBookNode {
     title: String,
     content: String,
     identity: i16,
-    book_id: i32,
+    doc_id: i32,
     images: Vec<Images>,
 }
 
@@ -94,7 +94,7 @@ pub async fn edit_book_node(
         &pool.dirs.tmp_upload,
         &pool.dirs.book_upload,
         user_id,
-        body.book_id,
+        body.doc_id,
     );
     if body.images.len() > 0 {
         let _ = conn

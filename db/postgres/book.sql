@@ -20,7 +20,7 @@ CREATE INDEX books_search_vector_idx ON books USING GIN (books_search_vector);
 
 CREATE TABLE book (
     uid serial PRIMARY KEY,
-    book_id INT,
+    doc_id INT,
     user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     page_id INT, -- page_id is required to show all nodes of a page
     parent_id INT,
@@ -34,7 +34,7 @@ CREATE TABLE book (
 );
 
 -- Create and index to select chapters and sections
-CREATE INDEX idx_book_page_id ON book(book_id, page_id);
+CREATE INDEX idx_book_page_id ON book(doc_id, page_id);
 
 -- create search on title and tags for book
 ALTER TABLE book

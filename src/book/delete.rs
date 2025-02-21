@@ -12,7 +12,7 @@ use serde_json::json;
 
 #[derive(Deserialize, Serialize)]
 pub struct DeleteBook {
-    book_id: i32,
+    doc_id: i32,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -37,17 +37,17 @@ pub async fn delete_book(
     let current_time = Local::now();
 
     let state1 = conn
-        .prepare("UPDATE book SET deleted_at=$1 WHERE book_id=$2")
+        .prepare("UPDATE book SET deleted_at=$1 WHERE doc_id=$2")
         .await?;
     let state2 = conn
         .prepare("UPDATE books SET deleted_at=$1 WHERE uid=$2")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
-        .execute(&state1, &[&current_time, &body.book_id])
+        .execute(&state1, &[&current_time, &body.doc_id])
         .await?;
     transaction
-        .execute(&state2, &[&current_time, &body.book_id])
+        .execute(&state2, &[&current_time, &body.doc_id])
         .await?;
     transaction.commit().await?;
 

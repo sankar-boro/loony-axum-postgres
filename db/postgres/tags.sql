@@ -1,6 +1,6 @@
 CREATE TABLE book_tags (
     uid serial PRIMARY KEY,
-    book_id INT NOT NULL REFERENCES books(uid) ON DELETE CASCADE,
+    doc_id INT NOT NULL REFERENCES books(uid) ON DELETE CASCADE,
     user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     tag VARCHAR(50),
     score INT NOT NULL

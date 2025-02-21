@@ -11,7 +11,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use crate::types::{Book, BookParentNode, NavNodes, ChildNode};
-use crate::{fetch_books_by_user_id, fetch_books_by_book_ids};
+use crate::{fetch_books_by_user_id, fetch_books_by_doc_ids};
 
 
 pub async fn get_all_books_by_page_no(
@@ -234,7 +234,7 @@ pub async fn get_users_book(
     let mut books: Vec<Book> = Vec::new();
 
     if doc_ids.len() > 0 {
-        books = fetch_books_by_book_ids!(&conn, doc_ids)?;
+        books = fetch_books_by_doc_ids!(&conn, doc_ids)?;
     }
 
     Ok((

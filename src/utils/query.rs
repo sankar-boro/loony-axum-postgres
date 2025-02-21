@@ -28,12 +28,12 @@ macro_rules! fetch_books_by_user_id {
 }
 
 #[macro_export]
-macro_rules! fetch_books_by_book_ids {
-    ($conn:expr, $book_ids:expr) => {{
+macro_rules! fetch_books_by_doc_ids {
+    ($conn:expr, $doc_ids:expr) => {{
         use tokio_postgres::Row;
         
         let books_query = "SELECT uid, user_id, title, images, created_at FROM books where uid=ANY($1) AND deleted_at is NULL";
-        let rows: Vec<Row> = $conn.query(books_query, &[&$book_ids]).await?;
+        let rows: Vec<Row> = $conn.query(books_query, &[&$doc_ids]).await?;
 
         let books = rows
             .iter()

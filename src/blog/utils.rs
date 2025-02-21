@@ -213,13 +213,13 @@ mod tests {
     fn test_query() {
         let res = insert_tags(
             "tags",
-            "(book_id, user_id, name, score)",
+            "(doc_id, user_id, name, score)",
             vec![(1, 1, "Sankar", 1), (1, 1, "Boro", 1)],
         );
         assert_eq!(
             res,
             String::from(
-                "INSERT INTO tags (book_id, user_id, name, score) VALUES (1, 1, 'Sankar', 1), (1, 1, 'Boro', 1)"
+                "INSERT INTO tags (doc_id, user_id, name, score) VALUES (1, 1, 'Sankar', 1), (1, 1, 'Boro', 1)"
             )
         );
     }
