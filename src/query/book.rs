@@ -91,3 +91,26 @@ macro_rules! fetch_book_pages {
         Ok::<_, AppError>((books, main_node))
     }};
 }
+
+#[macro_export]
+macro_rules! fetch_home_books {
+    ($conn:expr) => {{
+        use tokio_postgres::Row;
+        
+        let books_query = "SELECT uid, user_id, title, images, created_at FROM books where deleted_at is NULL LIMIT 5";
+        let rows: Vec<Row> = $conn.query(books_query, &[]).await?;
+
+        let books = rows
+            .iter()
+            .map(|row| Book {
+                uid: row.get(0),
+                user_id: row.get(1),
+                title: row.get(2),
+                images: row.get(3),
+                created_at: row.get(4),
+            })
+            .collect::<Vec<Book>>();
+
+        Ok::<_, AppError>(books)
+    }};
+}

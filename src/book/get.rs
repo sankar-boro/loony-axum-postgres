@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::error::AppError;
-use crate::{fetch_book_pages, AppState};
+use crate::{fetch_book_pages, fetch_home_books, AppState};
 use axum::{
     extract::{Path as AxumPath, Query, State},
     http::{header, StatusCode},
@@ -237,6 +237,18 @@ pub async fn get_users_book(
         books = fetch_books_by_doc_ids!(&conn, doc_ids)?;
     }
 
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(books),
+    ))
+}
+
+pub async fn get_home_books(
+    State(pool): State<AppState>,
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
+    let books = fetch_home_books!(&conn)?;
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],

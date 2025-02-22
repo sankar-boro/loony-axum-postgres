@@ -10,6 +10,7 @@ mod traits;
 mod types;
 mod user;
 mod utils;
+mod query;
 
 use axum::http::{
     header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},

@@ -1,4 +1,4 @@
-use crate::error::AppError;
+use crate::{error::AppError, fetch_home_blogs};
 use crate::AppState;
 use axum::{
     extract::{Path as AxumPath, Query, State},
@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashSet;
+use crate::types::Blog;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GetAllBlogs {
@@ -215,6 +216,18 @@ pub async fn get_users_blog(
         }
     }
 
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        Json(blogs),
+    ))
+}
+
+pub async fn get_home_blogs(
+    State(pool): State<AppState>,
+) -> Result<impl IntoResponse, AppError> {
+    let conn = pool.pg_pool.get().await?;
+    let blogs = fetch_home_blogs!(&conn)?;
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
