@@ -16,11 +16,11 @@ BLOG_UPLOADS="$HOME/.blog_uploads"
 BOOK_UPLOADS="$HOME/.book_uploads"
 USER_UPLOADS="$HOME/.user_uploads"
 V1_PG_HOSTNAME="localhost"
-V1_PG_USERNAME="sankar"
-V1_PG_DBNAME="sankar"
-V1_PG_PASSWORD="sankar"
-V1_SECRET_KEY="3d9e5b5d709dca9a9169c6b1d486b92d6e8652752b06e00e6c4b76a9e5b3b5dc"
-V1_ALLOWED_ORIGINS="https://sankarboro.com,https://web.sankarboro.com,http://localhost,http://localhost:3000,http://127.0.0.1:8081,http://10.0.2.2:8081"
+V1_PG_USERNAME="<username>"
+V1_PG_DBNAME="<dbname>"
+V1_PG_PASSWORD="<password>"
+V1_SECRET_KEY="<secret_key>"
+V1_ALLOWED_ORIGINS="http://localhost,http://localhost:3000,http://127.0.0.1:8081,http://10.0.2.2:8081"
 
 if [ ! -d "$TMP_UPLOADS" ]; then
     mkdir $TMP_UPLOADS

@@ -1,16 +1,13 @@
 #!/bin/bash
 
-# Set environment (dev or prod)
-environment=${1:-dev}
-
-# Define database names for different environments
-if [ "$environment" == "prod" ]; then
-  db_name="loony"
-  user_name="loony"
-else
-  db_name="sankar"
-  user_name="sankar"
+if [ "$#" -ne 2 ]; then
+  echo "Usage: ./scripts/create_tables.sh <user_name> <db_name>"
+  exit 0
 fi
+
+# Set environment (dev or prod)
+user_name=${1}
+db_name=${2}
 
 # File paths
 dropfile=$PWD/db/postgres/drop_all_tables.sql
