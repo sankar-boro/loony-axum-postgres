@@ -89,7 +89,11 @@ pub async fn login(
         .await?;
 
     if row.is_none() {
-        return Err(AppError::InternalServerError("User not found".to_string()));
+        return Err(AppError::BadRequest(
+            serde_json::to_string(
+                &json!({ "status": 500, "message": "User not found"})
+            ).unwrap()
+        ));
     }
 
     let row = row.unwrap();
@@ -102,8 +106,10 @@ pub async fn login(
     let is_valid_password = verify(&body.password, &password)?;
 
     if !is_valid_password {
-        return Err(AppError::InternalServerError(
-            "Invalid password".to_string(),
+        return Err(AppError::BadRequest(
+            serde_json::to_string(
+                &json!({ "status": 500, "message": "Invalid password"})
+            ).unwrap()
         ));
     }
 
@@ -174,7 +180,11 @@ pub async fn signup(
         .await?;
 
     if row.is_some() {
-        return Err(AppError::InternalServerError("User exists".to_string()));
+        return Err(AppError::BadRequest(
+            serde_json::to_string(
+                &json!({ "status": 500, "message": "User exists"})
+            ).unwrap()
+        ));
     }
 
     let hashed_password = hash(&body.password, DEFAULT_COST)?;

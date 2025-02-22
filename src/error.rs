@@ -8,7 +8,8 @@ use image::ImageError;
 use validator::ValidationErrors;
 
 pub enum AppError {
-    // NotFound(String),
+    NotFound(String),
+    BadRequest(String),
     InternalServerError(String),
 }
 
@@ -68,7 +69,8 @@ impl From<ValidationErrors> for AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let body = match self {
-            // AppError::NotFound(e) => e,
+            AppError::NotFound(e) => e,
+            AppError::BadRequest(e) => e,
             AppError::InternalServerError(e) => e,
         };
         (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
