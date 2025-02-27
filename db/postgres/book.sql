@@ -1,6 +1,6 @@
 CREATE TABLE books (
     uid serial PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
+    user_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     content TEXT,
     images TEXT,
@@ -21,7 +21,7 @@ CREATE INDEX books_search_vector_idx ON books USING GIN (books_search_vector);
 CREATE TABLE book (
     uid serial PRIMARY KEY,
     doc_id INT,
-    user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
+    user_id INT NOT NULL,
     page_id INT, -- page_id is required to show all nodes of a page
     parent_id INT,
     title VARCHAR(255) NOT NULL,

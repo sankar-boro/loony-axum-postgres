@@ -28,7 +28,7 @@ pub struct CreateBlog {
 #[derive(Deserialize, Serialize)]
 pub struct EditBlog {
     uid: i32,
-    blog_id: i32,
+    doc_id: i32,
     title: String,
     content: String,
     images: Vec<Images>,
@@ -36,7 +36,7 @@ pub struct EditBlog {
 
 #[derive(Deserialize, Serialize)]
 pub struct GetBlog {
-    blog_id: i32,
+    doc_id: i32,
     title: String,
     content: String,
     images: String,
@@ -56,7 +56,7 @@ pub async fn create_blog(
         .prepare("INSERT INTO blogs(user_id, title, content, images) VALUES($1, $2, $3, $4) RETURNING uid")
         .await?;
     let insert_blog_query = conn
-        .prepare("INSERT INTO blog(user_id, blog_id, title, content, images) VALUES($1, $2, $3, $4, $5) RETURNING uid")
+        .prepare("INSERT INTO blog(user_id, doc_id, title, content, images) VALUES($1, $2, $3, $4, $5) RETURNING uid")
         .await?;
 
     let transaction = conn.transaction().await?;
@@ -68,12 +68,12 @@ pub async fn create_blog(
         )
         .await?;
 
-    let blog_id: i32 = row.get(0);
+    let doc_id: i32 = row.get(0);
 
     transaction
         .execute(
             &insert_blog_query,
-            &[&user_id, &blog_id, &body.title, &body.content, &images],
+            &[&user_id, &doc_id, &body.title, &body.content, &images],
         )
         .await?;
 
@@ -84,11 +84,11 @@ pub async fn create_blog(
     let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
     let tags = body.tags;
     tags.iter().for_each(|x| {
-        all_tags.push((blog_id, user_id, x, score));
+        all_tags.push((doc_id, user_id, x, score));
     });
 
     conn.query(
-        &insert_tags("blog_tags", "(blog_id, user_id, tag, score)", all_tags),
+        &insert_tags("blog_tags", "(doc_id, user_id, tag, score)", all_tags),
         &[],
     )
     .await?;
@@ -97,11 +97,11 @@ pub async fn create_blog(
         &pool.dirs.tmp_upload,
         &pool.dirs.blog_upload,
         user_id,
-        blog_id,
+        doc_id,
     );
 
     let new_blog = json!({
-        "blog_id": blog_id,
+        "doc_id": doc_id,
         "title": &body.title,
         "content": &body.content,
         "images": &images,
@@ -129,7 +129,7 @@ pub async fn edit_blog(
         .prepare("UPDATE blogs SET title=$1, content=$2, images=$3 WHERE uid=$4")
         .await?;
 
-    // let blog_id: i32 = row.get(0);
+    // let doc_id: i32 = row.get(0);
 
     let state_2 = conn
         .prepare("UPDATE blog SET title=$1, content=$2, images=$3 WHERE uid=$4")
@@ -138,7 +138,7 @@ pub async fn edit_blog(
     transaction
         .execute(
             &state_1,
-            &[&body.title, &body.content, &images, &body.blog_id],
+            &[&body.title, &body.content, &images, &body.doc_id],
         )
         .await?;
     transaction
@@ -150,7 +150,7 @@ pub async fn edit_blog(
         &pool.dirs.tmp_upload,
         &pool.dirs.blog_upload,
         user_id,
-        body.blog_id,
+        body.doc_id,
     );
     Ok((
         StatusCode::OK,
@@ -161,7 +161,7 @@ pub async fn edit_blog(
 
 #[derive(Deserialize, Serialize)]
 pub struct AddBlogNode {
-    blog_id: i32,
+    doc_id: i32,
     title: String,
     content: String,
     images: Vec<Images>,
@@ -187,7 +187,7 @@ pub async fn append_blog_node(
 
     let insert_statement = conn
         .prepare(
-            "INSERT INTO blog(user_id, blog_id, parent_id, title, content, images) values($1, $2, $3, $4, $5, $6) returning uid"
+            "INSERT INTO blog(user_id, doc_id, parent_id, title, content, images) values($1, $2, $3, $4, $5, $6) returning uid"
         )
         .await?;
 
@@ -201,7 +201,7 @@ pub async fn append_blog_node(
             &insert_statement,
             &[
                 &user_id,
-                &body.blog_id,
+                &body.doc_id,
                 &body.parent_id,
                 &body.title,
                 &body.content,
@@ -233,11 +233,11 @@ pub async fn append_blog_node(
         let score: i32 = 1;
         let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
         tags.iter().for_each(|x| {
-            all_tags.push((body.blog_id, user_id, x, score));
+            all_tags.push((body.doc_id, user_id, x, score));
         });
     
         conn.query(
-            &insert_tags("blog_tags", "(blog_id, user_id, tag, score)", all_tags),
+            &insert_tags("blog_tags", "(doc_id, user_id, tag, score)", all_tags),
             &[],
         )
         .await?;
@@ -247,7 +247,7 @@ pub async fn append_blog_node(
         &pool.dirs.tmp_upload,
         &pool.dirs.blog_upload,
         user_id,
-        body.blog_id,
+        body.doc_id,
     );
 
     Ok((
@@ -269,7 +269,7 @@ pub async fn append_blog_node(
 
 #[derive(Deserialize, Serialize)]
 pub struct DeleteBlog {
-    blog_id: i32,
+    doc_id: i32,
 }
 
 pub async fn delete_blog(
@@ -279,17 +279,17 @@ pub async fn delete_blog(
     let mut conn = pool.pg_pool.get().await?;
     let current_time = Local::now();
     let state1 = conn
-        .prepare("UPDATE blogs SET deleted_at=$1 WHERE blog_id=$2")
+        .prepare("UPDATE blogs SET deleted_at=$1 WHERE doc_id=$2")
         .await?;
     let state2 = conn
-        .prepare("UPDATE blog SET deleted_at=$1 WHERE blog_id=$2")
+        .prepare("UPDATE blog SET deleted_at=$1 WHERE doc_id=$2")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
-        .execute(&state1, &[&current_time, &body.blog_id])
+        .execute(&state1, &[&current_time, &body.doc_id])
         .await?;
     transaction
-        .execute(&state2, &[&current_time, &body.blog_id])
+        .execute(&state2, &[&current_time, &body.doc_id])
         .await?;
     transaction.commit().await?;
     Ok((
@@ -357,7 +357,7 @@ pub struct EditBlogNode {
     uid: i32,
     title: String,
     content: String,
-    blog_id: i32,
+    doc_id: i32,
     images: Vec<Images>,
 }
 
@@ -382,7 +382,7 @@ pub async fn edit_blog_node(
         &pool.dirs.tmp_upload,
         &pool.dirs.blog_upload,
         user_id,
-        body.blog_id,
+        body.doc_id,
     );
 
     Ok((

@@ -91,7 +91,7 @@ pub async fn get_all_blogs_by_user_id(
 #[derive(Deserialize, Serialize, Debug)]
 pub struct BlogNode {
     uid: i32,
-    blog_id: i32,
+    doc_id: i32,
     parent_id: Option<i32>,
     title: String,
     content: String,
@@ -101,7 +101,7 @@ pub struct BlogNode {
 
 #[derive(Deserialize)]
 pub struct BlogNodesRequestById {
-    blog_id: i32,
+    doc_id: i32,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -123,14 +123,14 @@ pub async fn get_all_blog_nodes(
     let conn = pool.pg_pool.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, content, images, created_at FROM blog where blog_id=$1 and deleted_at is null and parent_id is not null",
-            &[&blog_request.blog_id],
+            "SELECT uid, parent_id, title, content, images, created_at FROM blog where doc_id=$1 and deleted_at is null and parent_id is not null",
+            &[&blog_request.doc_id],
         )
         .await?;
     let blog_row = conn
         .query_one(
             "SELECT uid, user_id, title, content, images, created_at FROM blogs where uid=$1",
-            &[&blog_request.blog_id],
+            &[&blog_request.doc_id],
         )
         .await?;
 
@@ -148,7 +148,7 @@ pub async fn get_all_blog_nodes(
     for (index, _) in rows.iter().enumerate() {
         child_nodes.push(BlogNode {
             uid: rows[index].get(0),
-            blog_id: blog_row.get(0),
+            doc_id: blog_row.get(0),
             parent_id: rows[index].get(1),
             title: rows[index].get(2),
             content: rows[index].get(3),
@@ -183,27 +183,27 @@ pub async fn get_users_blog(
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
 
-    let blog_ids_user_tags_query = "SELECT blog_id FROM blog_tags where user_id=$1";
-    let blog_id_rows = conn.query(blog_ids_user_tags_query, &[&user_id]).await?;
+    let doc_ids_user_tags_query = "SELECT doc_id FROM blog_tags where user_id=$1";
+    let doc_id_rows = conn.query(doc_ids_user_tags_query, &[&user_id]).await?;
 
     let mut seen: HashSet<i32> = std::collections::HashSet::new();
-    let mut blog_ids: Vec<i32> = Vec::new();
+    let mut doc_ids: Vec<i32> = Vec::new();
 
-    if blog_id_rows.len() > 0 {
-        for row in blog_id_rows.iter() {
-            let blog_id: i32 = row.get(0);
-            if seen.insert(blog_id) {
-                blog_ids.push(row.get(0));
+    if doc_id_rows.len() > 0 {
+        for row in doc_id_rows.iter() {
+            let doc_id: i32 = row.get(0);
+            if seen.insert(doc_id) {
+                doc_ids.push(row.get(0));
             }
         }
     }
 
     let mut blogs: Vec<HomeBlogsResponse> = Vec::new();
 
-    if blog_id_rows.len() > 0 {
+    if doc_id_rows.len() > 0 {
         let blogs_query =
             "SELECT uid, title, content, images, created_at FROM blogs where uid=ANY($1)";
-        let blog_rows = conn.query(blogs_query, &[&blog_ids]).await?;
+        let blog_rows = conn.query(blogs_query, &[&doc_ids]).await?;
         for row in blog_rows.iter() {
             blogs.push(HomeBlogsResponse {
                 uid: row.get(0),

@@ -10,11 +10,11 @@ user_name=${1}
 db_name=${2}
 
 # File paths
-dropfile=$PWD/db/postgres/drop_all_tables.sql
-user=$PWD/db/postgres/user.sql
-blog=$PWD/db/postgres/blog.sql
-book=$PWD/db/postgres/book.sql
-tags=$PWD/db/postgres/tags.sql
+dropfile=./drop_all_tables.sql
+user=./user.sql
+blog=./blog.sql
+book=./book.sql
+tags=./tags.sql
 
 # Execute SQL files
 psql -h localhost -U $user_name -d $db_name \

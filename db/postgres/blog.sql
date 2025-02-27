@@ -1,6 +1,6 @@
 CREATE TABLE blogs (
     uid serial PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
+    user_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     content TEXT,
     images TEXT,
@@ -21,8 +21,8 @@ CREATE INDEX blogs_search_vector_idx ON blogs USING GIN (blogs_search_vector);
 
 CREATE TABLE blog (
     uid serial PRIMARY KEY,
-    blog_id INT,
-    user_id INT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
+    doc_id INT,
+    user_id INT NOT NULL,
     parent_id INT,
     title VARCHAR(255) NOT NULL,
     content TEXT,
