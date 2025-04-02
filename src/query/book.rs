@@ -56,7 +56,7 @@ macro_rules! fetch_book_pages {
         use tokio_postgres::Row;
         let book_row: Row = $conn
         .query_one(
-            "SELECT uid, user_id, title, content, images, created_at FROM books where uid=$1",
+            "SELECT uid, user_id, title, content, images, created_at FROM book where doc_id=$1 and identity=100 and deleted_at is null LIMIT 1",
             &[&$doc_id],
         )
         .await?;

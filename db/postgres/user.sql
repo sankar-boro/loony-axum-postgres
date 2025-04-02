@@ -10,17 +10,3 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE
 );
-
-CREATE TABLE subscription(
-    uid serial PRIMARY KEY NOT NULL,
-    user_id INT NOT NULL,
-    subscribed_id INT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE users_cache(
-    uid serial PRIMARY KEY NOT NULL,
-    user_id INT NOT NULL,
-    users JSON,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);

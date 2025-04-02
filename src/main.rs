@@ -56,7 +56,11 @@ async fn init() -> AppState {
     )
     .unwrap();
     let pg_pool = Pool::builder().build(pg_manager).await.unwrap();
-
+    let conn = pg_pool.clone();
+    let conn = tokio::time::timeout(tokio::time::Duration::from_secs(3), conn.get()).await.expect("Failed to connect to database.");
+    let conn = conn.unwrap();
+    conn.query("select * from users", &[]).await.unwrap();
+    
     return AppState {
         pg_pool,
         dirs: Dirs {
