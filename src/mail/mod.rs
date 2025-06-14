@@ -44,16 +44,15 @@ pub async fn send_email(
     State(state): State<AppState>,
     Json(payload): Json<EmailRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let api_token = "478d51b65372f0f165f433f52bf15321";
-    let sandbox_id = "3804420";
+    let mailtrap = &state.mailtrap;
 
     let new_uuid_v4 = get_new_uuid_v4();
     let body = BODY.replace("{{RESET_LINK}}", &format!(r#"http://localhost:3000/resetPassword/{new_uuid_v4}"#));
     let client = Client::new();
     let email_payload = MailtrapPayload {
         from: EmailAddress {
-            email: "help@loony.com".to_string(),
-            name: Some("Mailtrap Test".to_string()),
+            email: mailtrap.mailtrap_email.clone(),
+            name: mailtrap.mailtrap_name.clone(),
         },
         to: vec![EmailAddress {
             email: payload.to,
@@ -64,12 +63,11 @@ pub async fn send_email(
         category: "Integration Test".to_string(),
     };
 
+    let url = &mailtrap.url;
+
     let _ = client
-        .post(&format!(
-            "https://sandbox.api.mailtrap.io/api/send/{}",
-            sandbox_id
-        ))
-        .bearer_auth(api_token)
+        .post(url)
+        .bearer_auth(&mailtrap.mailtrap_token_id)
         .json(&email_payload)
         .send()
         .await;

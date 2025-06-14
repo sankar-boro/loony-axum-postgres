@@ -23,6 +23,7 @@ use search::Search;
 // use log4rs;
 use tokio_postgres::NoTls;
 use tower_http::cors::CorsLayer;
+use tower_sessions_redis_store::fred::bytes_utils::Str;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
@@ -31,14 +32,33 @@ pub struct Dirs {
     tmp_upload: String,
     blog_upload: String,
     book_upload: String,
-    user_upload: String,
+    user_upload: String
 }
 
 #[derive(Clone)]
-pub struct AppState {
-    pub pg_pool: Pool<PostgresConnectionManager<NoTls>>,
-    pub dirs: Dirs,
-    pub search: Search,
+pub(crate) struct AppState {
+    pub(crate) pg_pool: Pool<PostgresConnectionManager<NoTls>>,
+    pub(crate) dirs: Dirs,
+    pub(crate) search: Search,
+    pub(crate) mailtrap: MailtrapInfo
+}
+
+#[derive(Clone)]
+pub(crate) struct MailtrapInfo {
+    pub(crate) url: String,
+    pub(crate) mailtrap_email: String,
+    pub(crate) mailtrap_name: Option<String>,
+    pub(crate) mailtrap_token_id: String,
+}
+
+fn mailtrap() -> MailtrapInfo {
+    let mailtrap_email = std::env::var("MAILTRAP_EMAIL").unwrap();
+    let mailtrap_name = std::env::var("MAILTRAP_NAME").unwrap();
+    let mailtrap_token_id = std::env::var("MAILTRAP_TOKEN_ID").unwrap();
+    let mailtrap_sandbox_id = std::env::var("MAILTRAP_SANDBOX_ID").unwrap();
+    let url = format!("https://sandbox.api.mailtrap.io/api/send/{mailtrap_sandbox_id}");
+
+    MailtrapInfo { url, mailtrap_email, mailtrap_name: Some(mailtrap_name), mailtrap_token_id }
 }
 
 async fn init() -> AppState {
@@ -71,6 +91,7 @@ async fn init() -> AppState {
             user_upload: String::from(std::env::var("USER_UPLOADS").unwrap()),
         },
         search: search::init_search(),
+        mailtrap: mailtrap()
     };
 }
 

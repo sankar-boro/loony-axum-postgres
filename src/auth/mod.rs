@@ -278,6 +278,7 @@ pub async fn logout(session: Session) -> Result<impl IntoResponse, AppError> {
 
 #[derive(Deserialize, Debug, Validate)]
 pub struct ResetPassword {
+    session_id: String,
     #[validate(custom = "validate_email")]
     email: String,
     #[validate(length(min = 6))]
@@ -287,10 +288,34 @@ pub struct ResetPassword {
 }
 
 pub async fn reset_password(
+    session: Session,
     State(state): State<AppState>,
     Json(body): Json<ResetPassword>,
 ) -> Result<impl IntoResponse, AppError> {
     body.validate()?;
+
+    let session_id = session
+        .get::<String>("RESET_PASSWORD_SESSION_ID")
+        .await?;
+
+    if session_id.is_none() {
+        return Err(AppError::BadRequest(
+            serde_json::to_string(
+                &json!({ "status": 500, "message": "Email reset link has been expired."})
+            ).unwrap()
+        ));
+    }
+
+    if let Some(session_id) = session_id {
+        if session_id != body.session_id {
+            return Err(AppError::BadRequest(
+                serde_json::to_string(
+                    &json!({ "status": 500, "message": "Email reset link has been expired."})
+                ).unwrap()
+            ));
+        }
+    }
+
     let conn = state.pg_pool.get().await?;
 
     let row = conn
