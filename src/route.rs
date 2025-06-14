@@ -1,5 +1,6 @@
 use crate::blog::get::get_home_blogs;
 use crate::book::get::{get_book_chapters_and_sections, get_chapter_details, get_home_books, get_section_details};
+use crate::{auth, mail};
 use crate::user::{get_subscribed_users, subscribe_user, un_subscribe_user};
 use crate::{
     auth::logout,
@@ -66,12 +67,12 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
     pool.connect();
     pool.wait_for_connect().await.unwrap();
 
-    let session_store = RedisStore::new(pool);
+    let session_store = RedisStore::new(pool.clone());
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)
         .with_expiry(Expiry::OnInactivity(Duration::days(3)));
 
-    let auth_routes = Router::new()
+    let login_routes = Router::new()
         .route("/login", get(login).post(login))
         .route("/signup", post(signup))
         .route(
@@ -128,8 +129,8 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
             post(user_removed_a_followed_tag),
         );
 
-    Router::new()
-        .nest("/v1/auth", auth_routes)
+    let auth_routes = Router::new()
+        .nest("/v1/auth", login_routes)
         .nest("/v1/blog", blog_routes)
         .nest("/v1/book", book_routes)
         .nest("/v1/tag", tag_routes)
@@ -139,6 +140,23 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/v1/book/:uid/:size/:filename", get(get_book_file))
         .route("/v1/tmp/:uid/:size/:filename", get(get_tmp_file))
         .route("/v1", get(home))
+        .with_state(connection.clone())
+        .layer(cors.clone())
+        .layer(session_layer.clone())
+        .layer(DefaultBodyLimit::disable())
+        .layer(
+            ServiceBuilder::new()
+                .layer(RequestBodyLimitLayer::new(12 * 1024 * 1024))
+                .into_inner(),
+        );
+
+    let session_store = RedisStore::new(pool);
+    let session_layer = SessionManagerLayer::new(session_store)
+        .with_secure(false)
+        .with_expiry(Expiry::OnInactivity(Duration::minutes(10)));
+    let un_auth_routes = Router::new()
+        .route("/v1/mail", post(mail::send_email))
+        .route("/v1/reset_password", post(auth::reset_password))
         .with_state(connection)
         .layer(cors)
         .layer(session_layer)
@@ -147,5 +165,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
             ServiceBuilder::new()
                 .layer(RequestBodyLimitLayer::new(12 * 1024 * 1024))
                 .into_inner(),
-        )
+        );
+
+    un_auth_routes.merge(auth_routes)
 }

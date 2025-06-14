@@ -1,8 +1,10 @@
 pub mod doc;
+pub mod data;
 
 use crate::error::AppError;
 use crate::types::ImageMetadata;
 use tower_sessions::Session;
+use uuid::Uuid;
 
 pub trait GetUserId {
     async fn get_user_id(&self) -> Result<i32, AppError>;
@@ -30,4 +32,8 @@ pub fn new_height(img_metadata: &ImageMetadata) -> u32 {
         ((img_metadata.cropImgMd.width - 340) * 100) / img_metadata.cropImgMd.width;
     let new_height = img_metadata.cropImgMd.height / 100 * new_width_percent;
     new_height
+}
+
+pub fn get_new_uuid_v4() -> String {
+    Uuid::new_v4().to_string()
 }

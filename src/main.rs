@@ -11,6 +11,7 @@ mod types;
 mod user;
 mod utils;
 mod query;
+mod mail;
 
 use axum::http::{
     header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},

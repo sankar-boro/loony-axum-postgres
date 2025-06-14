@@ -275,3 +275,56 @@ pub async fn logout(session: Session) -> Result<impl IntoResponse, AppError> {
         })),
     ))
 }
+
+#[derive(Deserialize, Debug, Validate)]
+pub struct ResetPassword {
+    #[validate(custom = "validate_email")]
+    email: String,
+    #[validate(length(min = 6))]
+    password: String,
+    #[validate(length(min = 6))]
+    confirm_password: String
+}
+
+pub async fn reset_password(
+    State(state): State<AppState>,
+    Json(body): Json<ResetPassword>,
+) -> Result<impl IntoResponse, AppError> {
+    body.validate()?;
+    let conn = state.pg_pool.get().await?;
+
+    let row = conn
+        .query_opt(
+            "select email from users where email=$1",
+            &[&body.email],
+        )
+        .await?;
+
+    if row.is_none() {
+        return Err(AppError::BadRequest(
+            serde_json::to_string(
+                &json!({ "status": 500, "message": "User does not exist."})
+            ).unwrap()
+        ));
+    }
+
+    let hashed_password = hash(&body.password, DEFAULT_COST)?;
+    conn
+        .execute(
+            "UPDATE users SET password=$1 where email=$2",
+            &[&hashed_password, &body.email],
+        )
+        .await?;
+
+    let user_response = json!({
+        "status": 200,
+        "message": "Password has been reset successfully",
+    });
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        // header_map,
+        Json(user_response),
+    ))
+}
