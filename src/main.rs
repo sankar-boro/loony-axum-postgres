@@ -20,10 +20,8 @@ use axum::http::{
 use bb8::Pool;
 use bb8_postgres::{bb8, PostgresConnectionManager};
 use search::Search;
-// use log4rs;
 use tokio_postgres::NoTls;
 use tower_http::cors::CorsLayer;
-use tower_sessions_redis_store::fred::bytes_utils::Str;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]

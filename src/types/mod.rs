@@ -68,6 +68,7 @@ pub(crate) struct NavNodes {
     pub uid: i32,
     pub parent_id: Option<i32>,
     pub title: String,
+    pub content: Option<String>,
     pub identity: i16,
     pub page_id: Option<i32>,
 }

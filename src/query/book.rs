@@ -72,7 +72,7 @@ macro_rules! fetch_book_pages {
         };
         let rows = $conn
             .query(
-                "SELECT uid, parent_id, title, identity, page_id FROM book where doc_id=$1 AND identity IN(101, 102) and deleted_at is null",
+                "SELECT uid, parent_id, title, content, identity, page_id FROM book where doc_id=$1 AND identity IN(101, 102) and deleted_at is null",
                 &[&$doc_id],
             )
             .await?;
@@ -83,8 +83,9 @@ macro_rules! fetch_book_pages {
             uid:  row.get(0),
             parent_id: row.get(1),
             title: row.get(2),
-            identity: row.get(3),
-            page_id: row.get(4),
+            content: row.get(3),
+            identity: row.get(4),
+            page_id: row.get(5),
         })
         .collect::<Vec<NavNodes>>();
 
