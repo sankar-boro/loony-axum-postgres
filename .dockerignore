@@ -1,0 +1,9 @@
+db/
+config/
+docs/
+scripts/
+target/
+.git/
+Dockerfile
+.dockerignore
+Readme.md

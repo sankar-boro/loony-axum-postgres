@@ -5,7 +5,10 @@ use crate::user::{get_subscribed_users, subscribe_user, un_subscribe_user};
 use crate::{
     auth::logout,
     blog::{
-        append_blog_node, create_blog, delete_blog, delete_blog_node, edit_blog, edit_blog_node,
+        delete::{
+            delete_blog, delete_blog_node
+        },
+        append_blog_node, create_blog, edit_blog, edit_blog_node,
         get::{
             get_all_blog_nodes, get_all_blogs_by_page_no, get_all_blogs_by_user_id, get_users_blog,
         },

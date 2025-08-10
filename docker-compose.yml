@@ -1,0 +1,87 @@
+services:
+  db:
+    image: postgres:16
+    container_name: postgres_db
+    # env_file:
+    #   - .env
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # optional init script if you have schema to create on first run:
+      # - ./db/postgres/all.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: redis_server
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  rust-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    container_name: loony-api
+    # load variables from local .env file (keeps secrets out of git if you .gitignore .env)
+    # env_file:
+    # - .env
+    # explicit environment for important values (these use substitution from .env)
+    environment:
+      RUST_LOG: info
+      V1_PORT: 8000
+      V1_HOSTNAME: localhost
+      TMP_UPLOADS: "/app/uploads/.tmp_uploads"
+      BLOG_UPLOADS: "/app/uploads/.blog_uploads"
+      BOOK_UPLOADS: "/app/uploads/.book_uploads"
+      USER_UPLOADS: "/app/uploads/.user_uploads"
+      V1_PG_HOSTNAME: db
+      V1_PG_USERNAME: postgres
+      V1_PG_DBNAME: postgres
+      V1_PG_PASSWORD: postgres
+      MAILTRAP_TOKEN_ID: 478d51b65372f0f165f433f52bf15321
+      MAILTRAP_SANDBOX_ID: 3804420
+      MAILTRAP_NAME: Loony
+      MAILTRAP_EMAIL: help@loony.com
+      MAILTRAP_HOSTNAME: sandbox.smtp.mailtrap.io
+      MAILTRAP_USERNAME: sankar.boro@yahoo.com
+      MAILTRAP_PASSWORD: d29a4be0314649
+      V1_SECRET_KEY: SECRET_KEY
+      V1_ALLOWED_ORIGINS: ""
+    ports:
+      - "8000:8000"
+    # for development you might want to mount source (optional)
+    volumes:
+      - uploads_data:/app/uploads
+    # entrypoint: [
+    #     "/bin/sh",
+    #     "-c",
+    #     '
+    #     mkdir -p /app/uploads &&
+    #     mkdir -p /app/uploads/.tmp_uploads &&
+    #     mkdir -p /app/uploads/.blog_uploads &&
+    #     mkdir -p /app/uploads/.book_uploads &&
+    #     mkdir -p /app/uploads/.user_uploads &&
+    #     exec "$@"
+    #     ',
+    #   ]
+    command: ["./loony-api"]
+
+volumes:
+  uploads_data:
+  postgres_data:
+  redis_data:

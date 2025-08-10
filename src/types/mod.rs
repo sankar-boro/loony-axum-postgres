@@ -71,6 +71,7 @@ pub(crate) struct NavNodes {
     pub content: Option<String>,
     pub identity: i16,
     pub page_id: Option<i32>,
+    pub images: Option<String>
 }
 
 #[derive(Serialize, Deserialize)]

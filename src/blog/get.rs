@@ -202,7 +202,7 @@ pub async fn get_users_blog(
 
     if doc_id_rows.len() > 0 {
         let blogs_query =
-            "SELECT uid, title, content, images, created_at FROM blogs where uid=ANY($1)";
+            "SELECT uid, title, content, images, created_at FROM blogs where uid=ANY($1) and deleted_at is null";
         let blog_rows = conn.query(blogs_query, &[&doc_ids]).await?;
         for row in blog_rows.iter() {
             blogs.push(HomeBlogsResponse {

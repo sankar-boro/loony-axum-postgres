@@ -96,6 +96,7 @@ async fn init() -> AppState {
 #[tokio::main]
 async fn main() {
     // log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
+    println!("Hello from Loony Api");
     let host = std::env::var("V1_HOSTNAME").unwrap();
     let port = std::env::var("V1_PORT").unwrap();
     let origins = std::env::var("V1_ALLOWED_ORIGINS").unwrap();

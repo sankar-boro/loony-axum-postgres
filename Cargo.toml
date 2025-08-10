@@ -1,5 +1,5 @@
 [package]
-name = "loony_axum_postgres"
+name = "loony-api"
 version = "0.1.0"
 edition = "2021"
 

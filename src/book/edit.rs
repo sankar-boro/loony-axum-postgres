@@ -18,40 +18,41 @@ pub struct EditBook {
     uid: i32,
     title: String,
     content: String,
+    images: Vec<Images>
 }
 
 // @Edit
 pub async fn edit_book(
-    // session: Session,
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<EditBook>,
 ) -> Result<impl IntoResponse, AppError> {
-    // let user_id = session.get_user_id().await?;
+    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.get().await?;
-    // let images = &serde_json::to_string(&body.images).unwrap();
-    // let _ = &body.images.move_images(
-    //     &pool.dirs.tmp_upload,
-    //     &pool.dirs.book_upload,
-    //     user_id,
-    //     body.doc_id,
-    // );
+    let images = &serde_json::to_string(&body.images).unwrap();
+    let _ = &body.images.move_images(
+        &pool.dirs.tmp_upload,
+        &pool.dirs.book_upload,
+        user_id,
+        body.doc_id,
+    );
     let state1 = conn
-        .prepare("UPDATE books SET title=$1, content=$2 WHERE uid=$3")
+        .prepare("UPDATE books SET title=$1, content=$2, images=$3 WHERE uid=$4")
         .await?;
     let state2 = conn
-        .prepare("UPDATE book SET title=$1, content=$2 WHERE uid=$3")
+        .prepare("UPDATE book SET title=$1, content=$2, images=$3 WHERE uid=$4")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
         .execute(
             &state1,
-            &[&body.title, &body.content, &body.doc_id],
+            &[&body.title, &body.content, &images, &body.doc_id],
         )
         .await?;
     transaction
         .execute(
             &state2,
-            &[&body.title, &body.content, &body.uid],
+            &[&body.title, &body.content, &images, &body.uid],
         )
         .await?;
     transaction.commit().await?;
