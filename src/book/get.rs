@@ -50,7 +50,29 @@ pub async fn get_all_books_by_user_id(
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
-    let books = fetch_books_by_user_id!(&pool, user_id)?;
+    let conn = pool.pg_pool.get().await?;
+    let books = fetch_books_by_user_id!(&conn, user_id)?;
+
+    // let doc_ids_user_tags_query = "SELECT doc_id FROM book_tags where user_id=$1";
+    // let mut seen: HashSet<i32> = HashSet::new();
+    // let mut doc_ids: Vec<i32> = Vec::new();
+    // let doc_id_rows = conn.query(doc_ids_user_tags_query, &[&user_id]).await?;
+
+    // if doc_id_rows.len() > 0 {
+    //     for row in doc_id_rows.iter() {
+    //         let doc_id: i32 = row.get(0);
+    //         if seen.insert(doc_id) {
+    //             doc_ids.push(doc_id);
+    //         }
+    //     }
+    // }
+
+    // let mut books: Vec<Book> = Vec::new();
+
+    // if doc_ids.len() > 0 {
+    //     books = fetch_books_by_doc_ids!(&conn, doc_ids)?;
+    // }
+
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
@@ -217,25 +239,7 @@ pub async fn get_users_book(
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
 
-    let doc_ids_user_tags_query = "SELECT doc_id FROM book_tags where user_id=$1";
-    let mut seen: HashSet<i32> = HashSet::new();
-    let mut doc_ids: Vec<i32> = Vec::new();
-    let doc_id_rows = conn.query(doc_ids_user_tags_query, &[&user_id]).await?;
-
-    if doc_id_rows.len() > 0 {
-        for row in doc_id_rows.iter() {
-            let doc_id: i32 = row.get(0);
-            if seen.insert(doc_id) {
-                doc_ids.push(doc_id);
-            }
-        }
-    }
-
-    let mut books: Vec<Book> = Vec::new();
-
-    if doc_ids.len() > 0 {
-        books = fetch_books_by_doc_ids!(&conn, doc_ids)?;
-    }
+    let books = fetch_books_by_user_id!(&conn, user_id)?;
 
     Ok((
         StatusCode::OK,

@@ -82,17 +82,17 @@ pub async fn create_blog(
 
     transaction.commit().await?;
 
-    let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
-    let tags = body.tags;
-    tags.iter().for_each(|x| {
-        all_tags.push((doc_id, user_id, x, score));
-    });
+    // let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
+    // let tags = body.tags;
+    // tags.iter().for_each(|x| {
+    //     all_tags.push((doc_id, user_id, x, score));
+    // });
 
-    conn.query(
-        &insert_tags("blog_tags", "(doc_id, user_id, tag, score)", all_tags),
-        &[],
-    )
-    .await?;
+    // conn.query(
+    //     &insert_tags("blog_tags", "(doc_id, user_id, tag, score)", all_tags),
+    //     &[],
+    // )
+    // .await?;
 
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,
@@ -230,19 +230,19 @@ pub async fn append_blog_node(
 
     transaction.commit().await?;
 
-    if let Some(tags) = &body.tags {
-        let score: i32 = 1;
-        let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
-        tags.iter().for_each(|x| {
-            all_tags.push((body.doc_id, user_id, x, score));
-        });
+    // if let Some(tags) = &body.tags {
+    //     let score: i32 = 1;
+    //     let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
+    //     tags.iter().for_each(|x| {
+    //         all_tags.push((body.doc_id, user_id, x, score));
+    //     });
     
-        conn.query(
-            &insert_tags("blog_tags", "(doc_id, user_id, tag, score)", all_tags),
-            &[],
-        )
-        .await?;
-    }
+    //     conn.query(
+    //         &insert_tags("blog_tags", "(doc_id, user_id, tag, score)", all_tags),
+    //         &[],
+    //     )
+    //     .await?;
+    // }
     
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,

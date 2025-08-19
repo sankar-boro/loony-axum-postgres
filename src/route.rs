@@ -13,10 +13,10 @@ use crate::{
             get_all_blog_nodes, get_all_blogs_by_page_no, get_all_blogs_by_user_id, get_users_blog,
         },
     },
-    likes::tag::{
-        get_all_tags_user_can_follow, get_all_tags_user_has_followed, user_followed_a_tag,
-        user_removed_a_followed_tag,
-    },
+    // likes::tag::{
+    //     get_all_tags_user_can_follow, get_all_tags_user_has_followed, user_followed_a_tag,
+    //     user_removed_a_followed_tag,
+    // },
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -117,26 +117,26 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/:user_id/un_subscribe", post(un_subscribe_user))
         .route("/get_subscribed_users", get(get_subscribed_users));
 
-    let tag_routes = Router::new()
-        .route(
-            "/:user_id/get_all_tags_user_can_follow",
-            get(get_all_tags_user_can_follow),
-        )
-        .route(
-            "/:user_id/get_all_tags_user_has_followed",
-            get(get_all_tags_user_has_followed),
-        )
-        .route("/user_followed_a_tag", post(user_followed_a_tag))
-        .route(
-            "/user_removed_a_followed_tag",
-            post(user_removed_a_followed_tag),
-        );
+    // let tag_routes = Router::new()
+    //     .route(
+    //         "/:user_id/get_all_tags_user_can_follow",
+    //         get(get_all_tags_user_can_follow),
+    //     )
+    //     .route(
+    //         "/:user_id/get_all_tags_user_has_followed",
+    //         get(get_all_tags_user_has_followed),
+    //     )
+    //     .route("/user_followed_a_tag", post(user_followed_a_tag))
+    //     .route(
+    //         "/user_removed_a_followed_tag",
+    //         post(user_removed_a_followed_tag),
+    //     );
 
     let auth_routes = Router::new()
         .nest("/v1/auth", login_routes)
         .nest("/v1/blog", blog_routes)
         .nest("/v1/book", book_routes)
-        .nest("/v1/tag", tag_routes)
+        // .nest("/v1/tag", tag_routes)
         .nest("/v1/user", user_routes)
         .route("/v1/upload_file", post(upload_file))
         .route("/v1/blog/:uid/:size/:filename", get(get_blog_file))

@@ -68,18 +68,18 @@ pub async fn create_book(
 
     transaction.commit().await?;
 
-    if let Some(tags) = body.tags {
-        let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
-        tags.iter().for_each(|__tag| {
-            all_tags.push((doc_id, user_id, __tag, 1));
-        });
+    // if let Some(tags) = body.tags {
+    //     let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
+    //     tags.iter().for_each(|__tag| {
+    //         all_tags.push((doc_id, user_id, __tag, 1));
+    //     });
     
-        conn.query(
-            &insert_tags("book_tags", "(doc_id, user_id, tag, score)", all_tags),
-            &[],
-        )
-        .await?;
-    }
+    //     conn.query(
+    //         &insert_tags("book_tags", "(doc_id, user_id, tag, score)", all_tags),
+    //         &[],
+    //     )
+    //     .await?;
+    // }
 
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,
@@ -186,18 +186,18 @@ pub async fn append_book_node(
     }
     transaction.commit().await?;
 
-    if let Some(tags) = body.tags {
-        let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
-        tags.iter().for_each(|__tag| {
-            all_tags.push((doc_id, user_id, __tag, 1));
-        });
+    // if let Some(tags) = body.tags {
+    //     let mut all_tags: Vec<(i32, i32, &str, i32)> = Vec::new();
+    //     tags.iter().for_each(|__tag| {
+    //         all_tags.push((doc_id, user_id, __tag, 1));
+    //     });
     
-        conn.query(
-            &insert_tags("book_tags", "(doc_id, user_id, tag, score)", all_tags),
-            &[],
-        )
-        .await?;
-    }
+    //     conn.query(
+    //         &insert_tags("book_tags", "(doc_id, user_id, tag, score)", all_tags),
+    //         &[],
+    //     )
+    //     .await?;
+    // }
 
     let _ = &body.images.move_images(
         &pool.dirs.tmp_upload,

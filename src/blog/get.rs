@@ -1,4 +1,4 @@
-use crate::{error::AppError, fetch_home_blogs};
+use crate::{error::AppError, fetch_home_blogs, fetch_blogs_by_user_id};
 use crate::AppState;
 use axum::{
     extract::{Path as AxumPath, Query, State},
@@ -182,39 +182,39 @@ pub async fn get_users_blog(
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
     let conn = pool.pg_pool.get().await?;
+    let blogs = fetch_blogs_by_user_id!(&conn, user_id)?;
+    // let doc_ids_user_tags_query = "SELECT doc_id FROM blog_tags where user_id=$1";
+    // let doc_id_rows = conn.query(doc_ids_user_tags_query, &[&user_id]).await?;
 
-    let doc_ids_user_tags_query = "SELECT doc_id FROM blog_tags where user_id=$1";
-    let doc_id_rows = conn.query(doc_ids_user_tags_query, &[&user_id]).await?;
+    // let mut seen: HashSet<i32> = std::collections::HashSet::new();
+    // let mut doc_ids: Vec<i32> = Vec::new();
 
-    let mut seen: HashSet<i32> = std::collections::HashSet::new();
-    let mut doc_ids: Vec<i32> = Vec::new();
+    // if doc_id_rows.len() > 0 {
+    //     for row in doc_id_rows.iter() {
+    //         let doc_id: i32 = row.get(0);
+    //         if seen.insert(doc_id) {
+    //             doc_ids.push(row.get(0));
+    //         }
+    //     }
+    // }
 
-    if doc_id_rows.len() > 0 {
-        for row in doc_id_rows.iter() {
-            let doc_id: i32 = row.get(0);
-            if seen.insert(doc_id) {
-                doc_ids.push(row.get(0));
-            }
-        }
-    }
+    // let mut blogs: Vec<HomeBlogsResponse> = Vec::new();
 
-    let mut blogs: Vec<HomeBlogsResponse> = Vec::new();
-
-    if doc_id_rows.len() > 0 {
-        let blogs_query =
-            "SELECT uid, title, content, images, created_at FROM blogs where uid=ANY($1) and deleted_at is null";
-        let blog_rows = conn.query(blogs_query, &[&doc_ids]).await?;
-        for row in blog_rows.iter() {
-            blogs.push(HomeBlogsResponse {
-                uid: row.get(0),
-                title: row.get(1),
-                content: row.get(2),
-                images: row.get(3),
-                created_at: row.get(4),
-                doc_type: 1,
-            });
-        }
-    }
+    // if doc_id_rows.len() > 0 {
+    //     let blogs_query =
+    //         "SELECT uid, title, content, images, created_at FROM blogs where uid=ANY($1) and deleted_at is null";
+    //     let blog_rows = conn.query(blogs_query, &[&doc_ids]).await?;
+    //     for row in blog_rows.iter() {
+    //         blogs.push(HomeBlogsResponse {
+    //             uid: row.get(0),
+    //             title: row.get(1),
+    //             content: row.get(2),
+    //             images: row.get(3),
+    //             created_at: row.get(4),
+    //             doc_type: 1,
+    //         });
+    //     }
+    // }
 
     Ok((
         StatusCode::OK,

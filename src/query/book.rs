@@ -1,16 +1,10 @@
 #[macro_export]
 macro_rules! fetch_books_by_user_id {
-    ($pool:expr, $user_id:expr) => {{
+    ($conn:expr, $user_id:expr) => {{
         use tokio_postgres::Row;
-        // use anyhow::Result;
 
-        let conn = $pool.pg_pool.get().await?;
-        let rows: Vec<Row> = conn
-            .query(
-                "SELECT uid, user_id, title, images, created_at FROM books WHERE deleted_at IS NULL AND user_id = $1",
-                &[&$user_id],
-            )
-            .await?;
+        let query = "SELECT uid, user_id, title, images, created_at FROM books WHERE deleted_at IS NULL AND user_id = $1";
+        let rows: Vec<Row> = $conn.query(query, &[&$user_id]).await?;
 
         let books = rows
             .iter()
