@@ -1,6 +1,5 @@
 use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
-use crate::utils::doc::insert_tags;
 use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
@@ -82,8 +81,8 @@ pub async fn create_book(
     // }
 
     let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.book_upload,
+        &pool.file_storage_path.tmp,
+        &pool.file_storage_path.book,
         user_id,
         doc_id,
     );
@@ -200,8 +199,8 @@ pub async fn append_book_node(
     // }
 
     let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.book_upload,
+        &pool.file_storage_path.tmp,
+        &pool.file_storage_path.book,
         user_id,
         body.doc_id,
     );

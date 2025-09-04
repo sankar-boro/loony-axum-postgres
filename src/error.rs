@@ -1,3 +1,5 @@
+use std::env::VarError;
+
 use axum::{
     extract::multipart::MultipartError,
     http::StatusCode,
@@ -7,10 +9,13 @@ use bcrypt::BcryptError;
 use image::ImageError;
 use validator::ValidationErrors;
 
+#[derive(Debug)]
+#[allow(dead_code)]
 pub enum AppError {
     NotFound(String),
     BadRequest(String),
     InternalServerError(String),
+    Error((StatusCode, String)),
 }
 
 impl From<std::io::Error> for AppError {
@@ -57,6 +62,11 @@ impl From<tower_sessions::session::Error> for AppError {
         AppError::InternalServerError(err.to_string())
     }
 }
+impl From<VarError> for AppError {
+    fn from(err: VarError) -> Self {
+        AppError::InternalServerError(err.to_string())
+    }
+}
 impl From<ValidationErrors> for AppError {
     fn from(err: ValidationErrors) -> Self {
         AppError::InternalServerError(
@@ -72,6 +82,9 @@ impl IntoResponse for AppError {
             AppError::NotFound(e) => e,
             AppError::BadRequest(e) => e,
             AppError::InternalServerError(e) => e,
+            AppError::Error((status_code, msg)) => {
+                return (status_code, msg).into_response();
+            },
         };
         (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
     }

@@ -1,5 +1,6 @@
 pub mod doc;
 pub mod data;
+pub mod response;
 
 use crate::error::AppError;
 use crate::types::ImageMetadata;

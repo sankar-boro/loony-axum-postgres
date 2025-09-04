@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::error::AppError;
 use crate::{fetch_book_pages, fetch_home_books, AppState};
 use axum::{
@@ -11,7 +9,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use crate::types::{Book, BookParentNode, NavNodes, ChildNode};
-use crate::{fetch_books_by_user_id, fetch_books_by_doc_ids};
+use crate::{fetch_books_by_user_id};
 
 
 pub async fn get_all_books_by_page_no(
@@ -86,6 +84,7 @@ pub struct ChaptersByBookIdRequest {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct Chapter {
     doc_id: i32,
     page_id: i32
@@ -128,6 +127,7 @@ pub async fn get_chapter_details(
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct Section {
     doc_id: i32,
     page_id: i32

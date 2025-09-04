@@ -4,7 +4,6 @@ mod utils;
 
 use crate::error::AppError;
 use crate::traits::{Images, MoveImages};
-use crate::utils::doc::insert_tags;
 use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
@@ -13,7 +12,6 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use chrono::Local;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_sessions::Session;
@@ -78,7 +76,7 @@ pub async fn create_blog(
         )
         .await?;
 
-    let score: i32 = 1;
+    // let score: i32 = 1;
 
     transaction.commit().await?;
 
@@ -95,8 +93,8 @@ pub async fn create_blog(
     // .await?;
 
     let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.blog_upload,
+        &pool.file_storage_path.tmp,
+        &pool.file_storage_path.blog,
         user_id,
         doc_id,
     );
@@ -148,8 +146,8 @@ pub async fn edit_blog(
     transaction.commit().await?;
 
     let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.blog_upload,
+        &pool.file_storage_path.tmp,
+        &pool.file_storage_path.blog,
         user_id,
         body.doc_id,
     );
@@ -245,8 +243,8 @@ pub async fn append_blog_node(
     // }
     
     let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.blog_upload,
+        &pool.file_storage_path.tmp,
+        &pool.file_storage_path.blog,
         user_id,
         body.doc_id,
     );
@@ -303,8 +301,8 @@ pub async fn edit_blog_node(
         .await?;
     transaction.commit().await?;
     let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.blog_upload,
+        &pool.file_storage_path.tmp,
+        &pool.file_storage_path.blog,
         user_id,
         body.doc_id,
     );

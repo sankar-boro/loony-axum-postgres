@@ -1,4 +1,5 @@
-const stop_words: [&str; 177] = [
+#[allow(dead_code)]
+const STOP_WORDS: [&str; 177] = [
     "a",
     "about",
     "above",
@@ -178,6 +179,7 @@ const stop_words: [&str; 177] = [
     "name",
 ];
 
+#[allow(dead_code)]
 pub fn remove_stopwords(input: &str) -> Vec<String> {
     // Split input into phrases (using whitespace or punctuation as delimiters)
     let phrases: Vec<&str> = input.split_whitespace().collect();
@@ -186,7 +188,7 @@ pub fn remove_stopwords(input: &str) -> Vec<String> {
     let filtered_phrases: Vec<String> = phrases
         .into_iter()
         .filter(|phrase| {
-            !stop_words.contains(phrase)
+            !STOP_WORDS.contains(phrase)
             // let words: Vec<String> = phrase.to_lowercase().split_whitespace().collect();
             // !words.iter().any(|word| stop_words.contains(word))
         })

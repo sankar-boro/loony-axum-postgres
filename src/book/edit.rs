@@ -31,8 +31,8 @@ pub async fn edit_book(
     let mut conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.book_upload,
+        &pool.file_storage_path.tmp,
+        &pool.file_storage_path.book,
         user_id,
         body.doc_id,
     );
@@ -91,8 +91,8 @@ pub async fn edit_book_node(
     let conn = pool.pg_pool.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body.images.move_images(
-        &pool.dirs.tmp_upload,
-        &pool.dirs.book_upload,
+        &pool.file_storage_path.tmp,
+        &pool.file_storage_path.book,
         user_id,
         body.doc_id,
     );

@@ -1,3 +1,4 @@
+use crate::auth::user_info;
 use crate::blog::get::get_home_blogs;
 use crate::book::get::{get_book_chapters_and_sections, get_chapter_details, get_home_books, get_section_details};
 use crate::{auth, mail};
@@ -18,15 +19,18 @@ use crate::{
     //     user_removed_a_followed_tag,
     // },
 };
+use crate::middleware::require_auth;
+use axum::middleware;
 use axum::{
     extract::DefaultBodyLimit,
     http::{header, StatusCode},
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
+    Json, Router
 };
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 
 use crate::book::{
     create::{append_book_node, create_book}, 
@@ -40,7 +44,7 @@ use crate::book::{
 use crate::file::{get_blog_file, get_book_file, get_tmp_file, upload_file};
 
 use crate::{
-    auth::{get_user_session, login, signup},
+    auth::{refresh_token, login, signup},
     AppState,
 };
 use serde_json::json;
@@ -57,6 +61,9 @@ pub async fn home() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::V
     ))
 }
 
+
+
+
 pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
     let pool = RedisPool::new(
         RedisConfig::from_url("redis://:sankar@127.0.0.1:6379/").unwrap(),
@@ -72,16 +79,13 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
 
     let session_store = RedisStore::new(pool.clone());
     let session_layer = SessionManagerLayer::new(session_store)
+        .with_http_only(true)
         .with_secure(false)
-        .with_expiry(Expiry::OnInactivity(Duration::days(3)));
+        .with_expiry(Expiry::OnInactivity(Duration::minutes(30)));
 
     let login_routes = Router::new()
         .route("/login", get(login).post(login))
         .route("/signup", post(signup))
-        .route(
-            "/user/session",
-            get(get_user_session).post(get_user_session),
-        )
         .route("/logout", post(logout));
 
     let blog_routes = Router::new()
@@ -115,7 +119,8 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
     let user_routes = Router::new()
         .route("/:user_id/subscribe", post(subscribe_user))
         .route("/:user_id/un_subscribe", post(un_subscribe_user))
-        .route("/get_subscribed_users", get(get_subscribed_users));
+        .route("/get_subscribed_users", get(get_subscribed_users))
+        .route("/userInfo", get(user_info));
 
     // let tag_routes = Router::new()
     //     .route(
@@ -133,19 +138,19 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
     //     );
 
     let auth_routes = Router::new()
-        .nest("/v1/auth", login_routes)
-        .nest("/v1/blog", blog_routes)
-        .nest("/v1/book", book_routes)
-        // .nest("/v1/tag", tag_routes)
-        .nest("/v1/user", user_routes)
-        .route("/v1/upload_file", post(upload_file))
-        .route("/v1/blog/:uid/:size/:filename", get(get_blog_file))
-        .route("/v1/book/:uid/:size/:filename", get(get_book_file))
-        .route("/v1/tmp/:uid/:size/:filename", get(get_tmp_file))
+        .nest("/blog", blog_routes)
+        .nest("/book", book_routes)
+        .nest("/user", user_routes)
+        .route("/upload_file", post(upload_file))
+        .route("/blog/:uid/:size/:filename", get(get_blog_file))
+        .route("/book/:uid/:size/:filename", get(get_book_file))
+        .route("/tmp/:uid/:size/:filename", get(get_tmp_file))
         .route("/v1", get(home))
         .with_state(connection.clone())
+        .layer(middleware::from_fn(require_auth))
         .layer(cors.clone())
         .layer(session_layer.clone())
+        .layer(CookieManagerLayer::new())
         .layer(DefaultBodyLimit::disable())
         .layer(
             ServiceBuilder::new()
@@ -158,8 +163,13 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .with_secure(false)
         .with_expiry(Expiry::OnInactivity(Duration::minutes(10)));
     let un_auth_routes = Router::new()
+        .nest("/auth", login_routes)
         .route("/v1/mail", post(mail::send_email))
         .route("/v1/reset_password", post(auth::reset_password))
+        .route(
+            "/refreshToken",
+            get(refresh_token).post(refresh_token),
+        )
         .with_state(connection)
         .layer(cors)
         .layer(session_layer)
