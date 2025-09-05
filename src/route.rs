@@ -30,7 +30,6 @@ use axum::{
 };
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
-use tower_cookies::{Cookie, CookieManagerLayer, Cookies};
 
 use crate::book::{
     create::{append_book_node, create_book}, 
@@ -60,9 +59,6 @@ pub async fn home() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::V
         Json(json!({"sankar": "boro"})),
     ))
 }
-
-
-
 
 pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
     let pool = RedisPool::new(
@@ -150,7 +146,6 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .layer(middleware::from_fn(require_auth))
         .layer(cors.clone())
         .layer(session_layer.clone())
-        .layer(CookieManagerLayer::new())
         .layer(DefaultBodyLimit::disable())
         .layer(
             ServiceBuilder::new()

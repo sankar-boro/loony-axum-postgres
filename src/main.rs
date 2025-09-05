@@ -49,7 +49,6 @@ async fn main() {
         .split(',')
         .map(|s| s.parse::<HeaderValue>().unwrap())
         .collect();
-    log::debug!("Origins: {:?}", origins);
     let cors = CorsLayer::new()
         .allow_origin(origins)
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
