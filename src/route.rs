@@ -1,10 +1,7 @@
-use crate::auth::user_info;
 use crate::blog::get::get_home_blogs;
 use crate::book::get::{get_book_chapters_and_sections, get_chapter_details, get_home_books, get_section_details};
-use crate::{auth, mail};
 use crate::user::{get_subscribed_users, subscribe_user, un_subscribe_user};
 use crate::{
-    auth::logout,
     blog::{
         delete::{
             delete_blog, delete_blog_node
@@ -14,10 +11,6 @@ use crate::{
             get_all_blog_nodes, get_all_blogs_by_page_no, get_all_blogs_by_user_id, get_users_blog,
         },
     },
-    // likes::tag::{
-    //     get_all_tags_user_can_follow, get_all_tags_user_has_followed, user_followed_a_tag,
-    //     user_removed_a_followed_tag,
-    // },
 };
 use crate::middleware::require_auth;
 use axum::middleware;
@@ -42,10 +35,7 @@ use crate::book::{
 };
 use crate::file::{get_blog_file, get_book_file, get_tmp_file, upload_file};
 
-use crate::{
-    auth::{refresh_token, login, signup},
-    AppState,
-};
+use crate::AppState;
 use serde_json::json;
 use time::Duration;
 use tower_http::cors::CorsLayer;
@@ -79,11 +69,6 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .with_secure(false)
         .with_expiry(Expiry::OnInactivity(Duration::minutes(30)));
 
-    let login_routes = Router::new()
-        .route("/login", get(login).post(login))
-        .route("/signup", post(signup))
-        .route("/logout", post(logout));
-
     let blog_routes = Router::new()
         .route("/create", post(create_blog))
         .route("/edit/main", post(edit_blog))
@@ -115,23 +100,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
     let user_routes = Router::new()
         .route("/:user_id/subscribe", post(subscribe_user))
         .route("/:user_id/un_subscribe", post(un_subscribe_user))
-        .route("/get_subscribed_users", get(get_subscribed_users))
-        .route("/userInfo", get(user_info));
-
-    // let tag_routes = Router::new()
-    //     .route(
-    //         "/:user_id/get_all_tags_user_can_follow",
-    //         get(get_all_tags_user_can_follow),
-    //     )
-    //     .route(
-    //         "/:user_id/get_all_tags_user_has_followed",
-    //         get(get_all_tags_user_has_followed),
-    //     )
-    //     .route("/user_followed_a_tag", post(user_followed_a_tag))
-    //     .route(
-    //         "/user_removed_a_followed_tag",
-    //         post(user_removed_a_followed_tag),
-    //     );
+        .route("/get_subscribed_users", get(get_subscribed_users));
 
     let auth_routes = Router::new()
         .nest("/blog", blog_routes)
@@ -153,27 +122,5 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
                 .into_inner(),
         );
 
-    let session_store = RedisStore::new(pool);
-    let session_layer = SessionManagerLayer::new(session_store)
-        .with_secure(false)
-        .with_expiry(Expiry::OnInactivity(Duration::minutes(10)));
-    let un_auth_routes = Router::new()
-        .nest("/auth", login_routes)
-        .route("/v1/mail", post(mail::send_email))
-        .route("/v1/reset_password", post(auth::reset_password))
-        .route(
-            "/refreshToken",
-            get(refresh_token).post(refresh_token),
-        )
-        .with_state(connection)
-        .layer(cors)
-        .layer(session_layer)
-        .layer(DefaultBodyLimit::disable())
-        .layer(
-            ServiceBuilder::new()
-                .layer(RequestBodyLimitLayer::new(12 * 1024 * 1024))
-                .into_inner(),
-        );
-
-    un_auth_routes.merge(auth_routes)
+    auth_routes
 }

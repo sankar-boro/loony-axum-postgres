@@ -1,4 +1,4 @@
-mod auth;
+
 mod blog;
 mod book;
 mod error;
