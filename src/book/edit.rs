@@ -28,11 +28,11 @@ pub async fn edit_book(
     Json(body): Json<EditBook>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = session.get_user_id().await?;
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body.images.move_images(
-        &pool.file_storage_path.tmp,
-        &pool.file_storage_path.book,
+        &pool.get_tmp_path(),
+        &pool.get_book_path(),
         user_id,
         body.doc_id,
     );
@@ -88,11 +88,11 @@ pub async fn edit_book_node(
     Json(body): Json<EditBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = session.get_user_id().await?;
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let _ = &body.images.move_images(
-        &pool.file_storage_path.tmp,
-        &pool.file_storage_path.book,
+        &pool.get_tmp_path(),
+        &pool.get_book_path(),
         user_id,
         body.doc_id,
     );

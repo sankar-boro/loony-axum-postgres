@@ -38,9 +38,9 @@ use crate::file::{get_blog_file, get_book_file, get_tmp_file, upload_file};
 use crate::AppState;
 use serde_json::json;
 use time::Duration;
-use tower_http::cors::CorsLayer;
 use tower_sessions::{Expiry, SessionManagerLayer};
 use tower_sessions_redis_store::{fred::prelude::*, RedisStore};
+use crate::connections::cors::init_cors;
 
 pub async fn home() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     Ok((
@@ -50,7 +50,7 @@ pub async fn home() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::V
     ))
 }
 
-pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
+pub async fn create_router(app_state: AppState) -> Router {
     let pool = RedisPool::new(
         RedisConfig::from_url("redis://:sankar@127.0.0.1:6379/").unwrap(),
         None,
@@ -68,6 +68,8 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .with_http_only(true)
         .with_secure(false)
         .with_expiry(Expiry::OnInactivity(Duration::minutes(30)));
+
+        let cors = init_cors(&app_state.config.app.allowed_origins);
 
     let blog_routes = Router::new()
         .route("/create", post(create_blog))
@@ -111,7 +113,7 @@ pub async fn create_router(connection: AppState, cors: CorsLayer) -> Router {
         .route("/book/:uid/:size/:filename", get(get_book_file))
         .route("/tmp/:uid/:size/:filename", get(get_tmp_file))
         .route("/v1", get(home))
-        .with_state(connection.clone())
+        .with_state(app_state.clone())
         .layer(middleware::from_fn(require_auth))
         .layer(cors.clone())
         .layer(session_layer.clone())

@@ -31,7 +31,7 @@ pub async fn create_book(
     let identity: i16 = 100;
     let images = &serde_json::to_string(&body.images).unwrap();
 
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
 
     let insert_books_query = conn
         .prepare("INSERT INTO books(user_id, title, content, images) VALUES($1, $2, $3, $4) RETURNING uid")
@@ -81,8 +81,8 @@ pub async fn create_book(
     // }
 
     let _ = &body.images.move_images(
-        &pool.file_storage_path.tmp,
-        &pool.file_storage_path.book,
+        &pool.get_tmp_path(),
+        &pool.get_book_path(),
         user_id,
         doc_id,
     );
@@ -126,7 +126,7 @@ pub async fn append_book_node(
     }
     let user_id = session.get_user_id().await?;
     let doc_id = body.doc_id;
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
 
     let images = &serde_json::to_string(&body.images).unwrap();
 
@@ -199,8 +199,8 @@ pub async fn append_book_node(
     // }
 
     let _ = &body.images.move_images(
-        &pool.file_storage_path.tmp,
-        &pool.file_storage_path.book,
+        &pool.get_tmp_path(),
+        &pool.get_book_path(),
         user_id,
         body.doc_id,
     );

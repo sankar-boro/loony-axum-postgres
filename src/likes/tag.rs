@@ -18,7 +18,7 @@ pub async fn get_all_tags_user_can_follow(
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
 
     let get_tags_res = conn
         .query(
@@ -46,7 +46,7 @@ pub async fn get_all_tags_user_has_followed(
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
 
     let get_tags_res = conn
         .query(
@@ -82,7 +82,7 @@ pub async fn user_removed_a_followed_tag(
     State(pool): State<AppState>,
     Json(body): Json<DeleteUserTag>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
 
     let _ = conn
         .query(
@@ -102,7 +102,7 @@ pub async fn user_followed_a_tag(
     State(pool): State<AppState>,
     Json(body): Json<UserFollowedATag>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
 
     let _ = conn
         .query(

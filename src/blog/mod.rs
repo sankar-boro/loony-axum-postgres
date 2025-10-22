@@ -49,7 +49,7 @@ pub async fn create_blog(
     let user_id = session.get_user_id().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
 
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
 
     let insert_blogs_query = conn
         .prepare("INSERT INTO blogs(user_id, title, content, images) VALUES($1, $2, $3, $4) RETURNING uid")
@@ -93,8 +93,8 @@ pub async fn create_blog(
     // .await?;
 
     let _ = &body.images.move_images(
-        &pool.file_storage_path.tmp,
-        &pool.file_storage_path.blog,
+        &pool.get_tmp_path(),
+        &pool.get_blog_path(),
         user_id,
         doc_id,
     );
@@ -121,7 +121,7 @@ pub async fn edit_blog(
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = session.get_user_id().await?;
 
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
 
     let state_1 = conn
@@ -146,8 +146,8 @@ pub async fn edit_blog(
     transaction.commit().await?;
 
     let _ = &body.images.move_images(
-        &pool.file_storage_path.tmp,
-        &pool.file_storage_path.blog,
+        &pool.get_tmp_path(),
+        &pool.get_blog_path(),
         user_id,
         body.doc_id,
     );
@@ -174,7 +174,7 @@ pub async fn append_blog_node(
     Json(body): Json<AddBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = session.get_user_id().await?;
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
 
     let update_row = conn
         .query_one(
@@ -243,8 +243,8 @@ pub async fn append_blog_node(
     // }
     
     let _ = &body.images.move_images(
-        &pool.file_storage_path.tmp,
-        &pool.file_storage_path.blog,
+        &pool.get_tmp_path(),
+        &pool.get_book_path(),
         user_id,
         body.doc_id,
     );
@@ -289,7 +289,7 @@ pub async fn edit_blog_node(
     Json(body): Json<EditBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = session.get_user_id().await?;
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let state1 = conn
         .prepare("UPDATE blog SET title=$1, content=$2, images=$3 WHERE uid=$4")
@@ -301,8 +301,8 @@ pub async fn edit_blog_node(
         .await?;
     transaction.commit().await?;
     let _ = &body.images.move_images(
-        &pool.file_storage_path.tmp,
-        &pool.file_storage_path.blog,
+        &pool.get_tmp_path(),
+        &pool.get_blog_path(),
         user_id,
         body.doc_id,
     );

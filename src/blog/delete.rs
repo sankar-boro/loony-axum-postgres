@@ -27,7 +27,7 @@ pub async fn delete_blog_node(
     State(pool): State<AppState>,
     Json(body): Json<DeleteBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
     let current_time = Local::now();
 
     let state1 = conn
@@ -67,7 +67,7 @@ pub async fn delete_blog(
     State(pool): State<AppState>,
     Json(body): Json<DeleteBlog>,
 ) -> Result<impl IntoResponse, AppError> {
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
     let current_time = Local::now();
     let state1 = conn
         .prepare("UPDATE blogs SET deleted_at=$1 WHERE uid=$2")

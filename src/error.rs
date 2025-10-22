@@ -1,4 +1,4 @@
-use std::env::VarError;
+use std::{env::VarError, num::ParseIntError};
 
 use axum::{
     extract::multipart::MultipartError,
@@ -75,7 +75,11 @@ impl From<ValidationErrors> for AppError {
         )
     }
 }
-
+impl From<ParseIntError> for AppError {
+    fn from(err: ParseIntError) -> Self {
+        AppError::InternalServerError(err.to_string())
+    }
+}
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let body = match self {

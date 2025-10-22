@@ -18,7 +18,7 @@ pub async fn get_subscribed_users(
 ) -> Result<impl IntoResponse, AppError> {
     let auth_user_id = session.get_user_id().await?;
 
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let rows = conn
         .query(
             "SELECT subscribed_id FROM subscription where user_id=$1",
@@ -43,7 +43,7 @@ pub async fn subscribe_user(
 ) -> Result<impl IntoResponse, AppError> {
     let auth_user_id = session.get_user_id().await?;
 
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let row = conn
         .query_one(
             "SELECT * FROM subscription where user_id=$1 and subscribed_id=$2",
@@ -76,7 +76,7 @@ pub async fn un_subscribe_user(
 ) -> Result<impl IntoResponse, AppError> {
     let auth_user_id = session.get_user_id().await?;
 
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let row = conn
         .query_one(
             "SELECT * FROM subscription where user_id=$1 and subscribed_id=$2",

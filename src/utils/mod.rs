@@ -13,7 +13,7 @@ pub trait GetUserId {
 
 impl GetUserId for Session {
     async fn get_user_id(&self) -> Result<i32, AppError> {
-        let user_id: i32 = match self.get("AUTH_USER_ID").await {
+        let user_id: i32 = match self.get("user_id").await {
             Ok(x) => match x {
                 Some(x) => x,
                 None => {

@@ -16,7 +16,7 @@ pub async fn get_all_books_by_page_no(
     State(pool): State<AppState>,
     AxumPath(page_no): AxumPath<i64>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let limit: i64 = 2;
     let offset: i64 = (page_no - 1) * limit;
     let rows = conn
@@ -48,7 +48,7 @@ pub async fn get_all_books_by_user_id(
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let books = fetch_books_by_user_id!(&conn, user_id)?;
 
     // let doc_ids_user_tags_query = "SELECT doc_id FROM book_tags where user_id=$1";
@@ -96,7 +96,7 @@ pub async fn get_chapter_details(
 ) -> Result<impl IntoResponse, AppError> {
     let book_request: Chapter = query.0;
 
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let rows = conn
         .query(
             "SELECT uid, parent_id, title, content, images, identity, page_id FROM book where uid=$1 OR parent_id=$2 AND identity=103 AND deleted_at is null",
@@ -139,10 +139,10 @@ pub async fn get_section_details(
 ) -> Result<impl IntoResponse, AppError> {
     let book_request: Section = query.0;
 
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let rows = conn
         .query(
-            "SELECT uid, parent_id, title, content, images, identity, page_id FROM book where uid=$1 OR parent_id=$2 AND identity=103 AND deleted_at is null",
+            "SELECT uid, parent_id, title, content, images, identity, page_id FROM book where uid=$1 OR page_id=$2 AND identity=103 AND deleted_at is null",
             &[&book_request.page_id, &book_request.page_id],
         )
         .await?;
@@ -207,7 +207,7 @@ pub async fn get_book_chapters_and_sections(
     query: Query<ChaptersByBookIdRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let doc_id: i32 = query.doc_id;
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let (books, main_node) = fetch_book_pages!(&conn, doc_id)?;
 
     Ok((
@@ -237,7 +237,7 @@ pub async fn get_users_book(
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
 
     let books = fetch_books_by_user_id!(&conn, user_id)?;
 
@@ -251,7 +251,7 @@ pub async fn get_users_book(
 pub async fn get_home_books(
     State(pool): State<AppState>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let books = fetch_home_books!(&conn)?;
     Ok((
         StatusCode::OK,

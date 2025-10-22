@@ -25,7 +25,7 @@ pub async fn get_all_blogs_by_page_no(
     State(pool): State<AppState>,
     AxumPath(page_no): AxumPath<i64>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let limit: i64 = 2;
     let offset: i64 = (page_no - 1) * limit;
     let rows = conn
@@ -59,7 +59,7 @@ pub async fn get_all_blogs_by_user_id(
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let rows = conn
         .query(
             "SELECT uid, title, content, images, created_at FROM blogs where deleted_at is null and user_id=$1",
@@ -119,7 +119,7 @@ pub async fn get_all_blog_nodes(
 ) -> Result<impl IntoResponse, AppError> {
     let blog_request: BlogNodesRequestById = query.0;
 
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let rows = conn
         .query(
             "SELECT uid, parent_id, title, content, images, created_at FROM blog where doc_id=$1 and deleted_at is null and parent_id is not null",
@@ -180,7 +180,7 @@ pub async fn get_users_blog(
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let blogs = fetch_blogs_by_user_id!(&conn, user_id)?;
     // let doc_ids_user_tags_query = "SELECT doc_id FROM blog_tags where user_id=$1";
     // let doc_id_rows = conn.query(doc_ids_user_tags_query, &[&user_id]).await?;
@@ -225,7 +225,7 @@ pub async fn get_users_blog(
 pub async fn get_home_blogs(
     State(pool): State<AppState>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conn = pool.pg_pool.get().await?;
+    let conn = pool.pg_pool.conn.get().await?;
     let blogs = fetch_home_blogs!(&conn)?;
     Ok((
         StatusCode::OK,

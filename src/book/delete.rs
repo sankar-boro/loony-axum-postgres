@@ -33,7 +33,7 @@ pub async fn delete_book(
     State(pool): State<AppState>,
     Json(body): Json<DeleteBook>,
 ) -> Result<impl IntoResponse, AppError> {
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
     let current_time = Local::now();
 
     let state1 = conn
@@ -64,7 +64,7 @@ pub async fn delete_book_node(
     State(pool): State<AppState>,
     Json(body): Json<DeleteBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
-    let mut conn = pool.pg_pool.get().await?;
+    let mut conn = pool.pg_pool.conn.get().await?;
 
     // Prepare to find ids to delete
     // Applies only for nodes where identity is 101, 102

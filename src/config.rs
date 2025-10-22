@@ -1,21 +1,25 @@
 use crate::error::AppError;
+use std::env::var;
 
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub(crate) struct FileStoragePath {
     pub(crate) tmp: String,
+    pub(crate) user: String,
     pub(crate) blog: String,
     pub(crate) book: String,
-    pub(crate) user: String,
 }
 
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub(crate) struct AppConfig {
+    pub(crate) app_name: String,
     pub(crate) hostname: String,
-    pub(crate) port: String,
+    pub(crate) http_port: u16,
+    pub(crate) https_port: u16,
     pub(crate) allowed_origins: String,
-    pub(crate) file_storage_path: FileStoragePath
+    pub(crate) file_storage_path: FileStoragePath,
+    pub(crate) secret_key: String,
 }
 
 #[derive(Clone, Debug)]
@@ -27,43 +31,52 @@ pub(crate) struct PostgresConfig {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct MailTrapConfig {
-    pub(crate) email: String,
-    pub(crate) name: String,
-    pub(crate) token_id: String,
-    pub(crate) sandbox_id: String,
-}
-
-#[derive(Clone, Debug)]
 pub(crate) struct Config {
     pub(crate) app: AppConfig,
     pub(crate) pg: PostgresConfig,
-    pub(crate) mailtrap: MailTrapConfig,
 }
 
 pub fn init_env_configs() -> Result<Config, AppError> {
+    let secret_key = var("SECRET_KEY")?;
 
-    let hostname = std::env::var("APP_HOSTNAME")?;
-    let port = std::env::var("APP_PORT")?;
-    let allowed_origins = std::env::var("ALLOWED_ORIGINS")?;
-    let pg_hostname = std::env::var("PG_HOSTNAME")?;
-    let pg_username = std::env::var("PG_USERNAME")?;
-    let pg_dbname = std::env::var("PG_DBNAME")?;
-    let pg_password = std::env::var("PG_PASSWORD")?;
+    let app_name = var("APP_NAME")?;
+    log::debug!("App Name: {}", app_name);
+    let hostname = var("APP_HOSTNAME")?;
+    let http_port = var("APP_HTTP_PORT")?.parse()?;
+    let https_port = var("APP_HTTPS_PORT")?.parse()?;
 
-    let mailtrap_email = std::env::var("MAILTRAP_EMAIL")?;
-    let mailtrap_name = std::env::var("MAILTRAP_NAME")?;
-    let mailtrap_token_id = std::env::var("MAILTRAP_TOKEN_ID")?;
-    let mailtrap_sandbox_id = std::env::var("MAILTRAP_SANDBOX_ID")?;
+    let allowed_origins = var("ALLOWED_ORIGINS")?;
+    log::debug!("Allowed origins: {}", allowed_origins);
+    let pg_hostname = var("PG_HOSTNAME")?;
+    let pg_username = var("PG_USERNAME")?;
+    let pg_dbname = var("PG_DBNAME")?;
+    let pg_password = var("PG_PASSWORD")?;
 
-    let tmp_upload = std::env::var("TMP_UPLOADS")?;
-    let blog_upload = std::env::var("BLOG_UPLOADS")?;
-    let book_upload = std::env::var("BOOK_UPLOADS")?;
-    let user_upload = std::env::var("USER_UPLOADS")?;
+    let tmp_upload = var("TMP_UPLOADS")?;
+    let user_upload = var("USER_UPLOADS")?;
+    let blog_upload = var("BLOG_UPLOADS")?;
+    let book_upload = var("BOOK_UPLOADS")?;
 
     Ok(Config {
-        app: AppConfig { hostname, port, allowed_origins, file_storage_path: FileStoragePath { tmp: tmp_upload, blog: blog_upload, book: book_upload, user: user_upload }},
-        pg: PostgresConfig { hostname: pg_hostname, username: pg_username, dbname: pg_dbname, password: pg_password },
-        mailtrap: MailTrapConfig { email: mailtrap_email, name: mailtrap_name, token_id: mailtrap_token_id, sandbox_id: mailtrap_sandbox_id }
+        app: AppConfig {
+            app_name,
+            secret_key, 
+            hostname, 
+            http_port, 
+            https_port, 
+            allowed_origins, 
+            file_storage_path: FileStoragePath { 
+                tmp: tmp_upload, 
+                user: user_upload,
+                blog: blog_upload,
+                book: book_upload 
+            }
+        },
+        pg: PostgresConfig { 
+            hostname: pg_hostname, 
+            username: pg_username, 
+            dbname: pg_dbname, 
+            password: pg_password 
+        }
     })
 }
