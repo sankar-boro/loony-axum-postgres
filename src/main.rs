@@ -13,6 +13,7 @@ mod utils;
 mod query;
 mod config;
 mod init;
+mod auth;
 mod middleware;
 mod connections;
 mod tracing_setup;

@@ -14,6 +14,7 @@ pub(crate) struct FileStoragePath {
 #[allow(dead_code)]
 pub(crate) struct AppConfig {
     pub(crate) app_name: String,
+    pub(crate) auth_app_name: String,
     pub(crate) hostname: String,
     pub(crate) http_port: u16,
     pub(crate) https_port: u16,
@@ -34,12 +35,15 @@ pub(crate) struct PostgresConfig {
 pub(crate) struct Config {
     pub(crate) app: AppConfig,
     pub(crate) pg: PostgresConfig,
+    pub(crate) redis: String,
 }
 
 pub fn init_env_configs() -> Result<Config, AppError> {
     let secret_key = var("SECRET_KEY")?;
 
     let app_name = var("APP_NAME")?;
+    let auth_app_name = var("AUTH_APP_NAME")?;
+
     log::debug!("App Name: {}", app_name);
     let hostname = var("APP_HOSTNAME")?;
     let http_port = var("APP_HTTP_PORT")?.parse()?;
@@ -51,6 +55,7 @@ pub fn init_env_configs() -> Result<Config, AppError> {
     let pg_username = var("PG_USERNAME")?;
     let pg_dbname = var("PG_DBNAME")?;
     let pg_password = var("PG_PASSWORD")?;
+    let redis_route = var("REDIS_ROUTE")?;
 
     let tmp_upload = var("TMP_UPLOADS")?;
     let user_upload = var("USER_UPLOADS")?;
@@ -60,6 +65,7 @@ pub fn init_env_configs() -> Result<Config, AppError> {
     Ok(Config {
         app: AppConfig {
             app_name,
+            auth_app_name,
             secret_key, 
             hostname, 
             http_port, 
@@ -77,6 +83,7 @@ pub fn init_env_configs() -> Result<Config, AppError> {
             username: pg_username, 
             dbname: pg_dbname, 
             password: pg_password 
-        }
+        },
+        redis: redis_route
     })
 }

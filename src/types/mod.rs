@@ -1,6 +1,25 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    pub(crate) aud: Option<String>,     // (audience): Intended recipients (like your frontend/client ID).
+    pub(crate) exp: usize,              // (expiration) (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
+    pub(crate) iat: Option<usize>,      // (issued at). Issued at (as UTC timestamp)
+    pub(crate) iss: Option<String>,     // (issuer): Identify your server/application.
+    pub(crate) nbf: Option<usize>,      // (not before): Optional, can prevent tokens from being used before a certain time.
+    pub(crate) sub: Option<String>,     // (subject): Usually the user ID.
+    pub(crate) data: UserClaims,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserClaims {
+    pub(crate) uid: i32,
+    pub(crate) username: String,
+    pub(crate) fname: String,
+    pub(crate) lname: String,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct OriImgMd {
     pub width: i32,

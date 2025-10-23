@@ -6,8 +6,8 @@ use time::Duration;
 pub struct AppSession {}
 
 impl AppSession {
-    pub async fn new(inactivity_duration: Duration) -> SessionManagerLayer<RedisStore<RedisPool>> {
-        let pool = AppSession::redis().await;
+    pub async fn new(route: &str, inactivity_duration: Duration) -> SessionManagerLayer<RedisStore<RedisPool>> {
+        let pool = AppSession::redis(route).await;
         let session_store = RedisStore::new(pool);
         let session_layer = SessionManagerLayer::new(session_store)
             .with_same_site(cookie::SameSite::None)
@@ -17,9 +17,9 @@ impl AppSession {
         session_layer
     }
 
-    async fn redis() -> RedisPool {
+    async fn redis(route: &str) -> RedisPool {
         let pool = RedisPool::new(
-            RedisConfig::from_url("redis://:sankar@127.0.0.1:6379/").unwrap(),
+            RedisConfig::from_url(route).unwrap(),
             None,
             None,
             None,

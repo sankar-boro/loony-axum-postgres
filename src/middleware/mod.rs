@@ -1,7 +1,9 @@
 use crate::error::AppError;
 use axum::http::HeaderMap;
-use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
+use crate::auth::decode_token;
+use axum::extract::State;
+use crate::AppState;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserData {
@@ -46,15 +48,15 @@ fn parse_cookies(headers: &HeaderMap) -> Vec<(String, String)> {
     cookies
 }
 
-pub async fn require_auth(header: HeaderMap, req: Request<axum::body::Body>, next: Next) -> Result<Response, AppError> {
+pub async fn require_auth(State(state): State<AppState>, header: HeaderMap, req: Request<axum::body::Body>, next: Next) -> Result<Response, AppError> {
     let cookies = parse_cookies(&header);
     for (name, value) in cookies.iter() {
         if name == "access_token" {
-            match decode_token(value) {
+            match decode_token(value, &state.config.app.auth_app_name, &state.config.app.secret_key) {
                 Ok(_) => {
                     return Ok(next.run(req).await)
                 },
-                Err(_) => {
+                Err(e) => {
                     return Ok(AppError::Error((StatusCode::UNAUTHORIZED, "UnAuthorized".to_string())).into_response());
                 },
             }
@@ -63,14 +65,3 @@ pub async fn require_auth(header: HeaderMap, req: Request<axum::body::Body>, nex
     return Ok(AppError::Error((StatusCode::UNAUTHORIZED, "UnAuthorized".to_string())).into_response());
 }
 
-pub(crate) fn decode_token(token: &str) -> Result<Claims, AppError> {
-    let secret_key = std::env::var("SECRET_KEY").unwrap();
-
-    let token_data = decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(secret_key.as_ref()),
-        &Validation::default(), // you can customize validation if needed
-    )?;
-
-    Ok(token_data.claims)
-}
