@@ -1,27 +1,9 @@
 use crate::error::AppError;
 use axum::http::HeaderMap;
-use serde::{Deserialize, Serialize};
 use crate::auth::decode_token;
 use axum::extract::State;
 use crate::AppState;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UserData {
-    pub uid: i32,
-    pub fname: String,
-    pub lname: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    aud: Option<String>, // Optional. Audience
-    exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-    iat: Option<usize>, // Optional. Issued at (as UTC timestamp)
-    iss: Option<String>, // Optional. Issuer
-    nbf: Option<usize>, // Optional. Not Before (as UTC timestamp)
-    sub: Option<String>, // Optional. Subject (whom token refers to)
-    pub data: UserData,
-}
 use axum::http::{ Request};
 use axum::response::{IntoResponse, Response};
 use axum::{
@@ -56,7 +38,7 @@ pub async fn require_auth(State(state): State<AppState>, header: HeaderMap, req:
                 Ok(_) => {
                     return Ok(next.run(req).await)
                 },
-                Err(e) => {
+                Err(_) => {
                     return Ok(AppError::Error((StatusCode::UNAUTHORIZED, "UnAuthorized".to_string())).into_response());
                 },
             }

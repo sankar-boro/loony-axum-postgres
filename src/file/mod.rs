@@ -1,5 +1,5 @@
 use crate::types::ImageMetadata;
-use crate::utils::new_height;
+use crate::utils::{new_height, GetUserId};
 use crate::{error::AppError, AppState};
 use axum::{
     extract::{Multipart, Path as AxumPath, State},
@@ -19,13 +19,13 @@ async fn create_tmp_path(
     session: &Session,
     extension: &str,
 ) -> Result<(String, String, String, String, u32), AppError> {
-    let unique_uuid = Uuid::new_v4().to_string();
-    let user_id: u32 = session.get("AUTH_USER_ID").await?.unwrap();
+    let unique_uuid = Uuid::new_v4().to_string();    
+    let user_id = session.get_user_id().await?;
     let filename = format!("{}.{}", &unique_uuid, extension);
     let lg_fpath = format!("{}/{}/1420-{}", &state.get_tmp_path(), &user_id, &filename);
     let md_fpath = format!("{}/{}/720-{}", &state.get_tmp_path(), &user_id, &filename);
     let sm_fpath = format!("{}/{}/340-{}", &state.get_tmp_path(), &user_id, &filename);
-    Ok((filename, lg_fpath, md_fpath, sm_fpath, user_id))
+    Ok((filename, lg_fpath, md_fpath, sm_fpath, user_id as u32))
 }
 
 // Doesn't support image upload size greater then 2mb
