@@ -125,23 +125,20 @@ pub async fn edit_blog(
     let images = &serde_json::to_string(&body.images).unwrap();
 
     let state_1 = conn
-        .prepare("UPDATE blogs SET title=$1, content=$2, images=$3 WHERE uid=$4")
+        .prepare("UPDATE blogs SET title=$1, content=$2, images=$3 WHERE uid=$4 AND user_id=$5")
         .await?;
-
-    // let doc_id: i32 = row.get(0);
-
     let state_2 = conn
-        .prepare("UPDATE blog SET title=$1, content=$2, images=$3 WHERE uid=$4")
+        .prepare("UPDATE blog SET title=$1, content=$2, images=$3 WHERE uid=$4 AND user_id=$5")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
         .execute(
             &state_1,
-            &[&body.title, &body.content, &images, &body.doc_id],
+            &[&body.title, &body.content, &images, &body.doc_id, &user_id],
         )
         .await?;
     transaction
-        .execute(&state_2, &[&body.title, &body.content, &images, &body.uid])
+        .execute(&state_2, &[&body.title, &body.content, &images, &body.uid, &user_id])
         .await?;
     transaction.commit().await?;
 
@@ -178,8 +175,8 @@ pub async fn append_blog_node(
 
     let update_row = conn
         .query_one(
-            "SELECT uid, parent_id from blog where parent_id=$1 and deleted_at is NULL",
-            &[&body.parent_id],
+            "SELECT uid, parent_id from blog where parent_id=$1 AND user_id=$2 AND deleted_at is NULL",
+            &[&body.parent_id, &user_id],
         )
         .await;
     let images = &serde_json::to_string(&body.images).unwrap();
@@ -191,7 +188,7 @@ pub async fn append_blog_node(
         .await?;
 
     let update_statement = conn
-        .prepare("UPDATE blog SET parent_id=$1 where uid=$2 RETURNING uid")
+        .prepare("UPDATE blog SET parent_id=$1 WHERE uid=$2 AND user_id=$3 RETURNING uid")
         .await?;
 
     let transaction = conn.transaction().await?;
@@ -217,7 +214,7 @@ pub async fn append_blog_node(
         if !update_row.is_empty() {
             let update_row_uid: i32 = update_row.get(0);
             transaction
-                .execute(&update_statement, &[&new_node_uid, &update_row_uid])
+                .execute(&update_statement, &[&new_node_uid, &update_row_uid, &user_id])
                 .await?;
             update_response = Some(UpdateNode {
                 uid: update_row_uid,
@@ -292,12 +289,12 @@ pub async fn edit_blog_node(
     let mut conn = pool.pg_pool.conn.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let state1 = conn
-        .prepare("UPDATE blog SET title=$1, content=$2, images=$3 WHERE uid=$4")
+        .prepare("UPDATE blog SET title=$1, content=$2, images=$3 WHERE uid=$4 AND user_id=$5")
         .await?;
     let transaction = conn.transaction().await?;
 
     transaction
-        .execute(&state1, &[&body.title, &body.content, &images, &body.uid])
+        .execute(&state1, &[&body.title, &body.content, &images, &body.uid, &user_id])
         .await?;
     transaction.commit().await?;
     let _ = &body.images.move_images(

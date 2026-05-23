@@ -2,7 +2,6 @@ use axum::http::{
     header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
     HeaderValue, Method,
 };
-use reqwest::header::ACCESS_CONTROL_ALLOW_ORIGIN;
 use tower_http::cors::CorsLayer;
 
 pub fn init_cors(allowed_origins: &str) -> CorsLayer {
@@ -23,5 +22,5 @@ pub fn init_cors(allowed_origins: &str) -> CorsLayer {
         .allow_origin(origins)
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_credentials(true)
-        .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE, ACCESS_CONTROL_ALLOW_ORIGIN])
+        .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE])
 }

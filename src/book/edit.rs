@@ -37,22 +37,22 @@ pub async fn edit_book(
         body.doc_id,
     );
     let state1 = conn
-        .prepare("UPDATE books SET title=$1, content=$2, images=$3 WHERE uid=$4")
+        .prepare("UPDATE books SET title=$1, content=$2, images=$3 WHERE uid=$4 AND user_id=$5")
         .await?;
     let state2 = conn
-        .prepare("UPDATE book SET title=$1, content=$2, images=$3 WHERE uid=$4")
+        .prepare("UPDATE book SET title=$1, content=$2, images=$3 WHERE uid=$4 AND user_id=$5")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
         .execute(
             &state1,
-            &[&body.title, &body.content, &images, &body.doc_id],
+            &[&body.title, &body.content, &images, &body.doc_id, &user_id],
         )
         .await?;
     transaction
         .execute(
             &state2,
-            &[&body.title, &body.content, &images, &body.uid],
+            &[&body.title, &body.content, &images, &body.uid, &user_id],
         )
         .await?;
     transaction.commit().await?;
@@ -99,8 +99,8 @@ pub async fn edit_book_node(
     if body.images.len() > 0 {
         let _ = conn
             .execute(
-                "UPDATE book SET title=$1, content=$2, images=$3 WHERE uid=$4",
-                &[&body.title, &body.content, &images, &body.uid],
+                "UPDATE book SET title=$1, content=$2, images=$3 WHERE uid=$4 AND user_id=$5",
+                &[&body.title, &body.content, &images, &body.uid, &user_id],
             )
             .await?;
     }
@@ -108,8 +108,8 @@ pub async fn edit_book_node(
     if body.images.len() == 0 {
         let _ = conn
             .execute(
-                "UPDATE book SET title=$1, content=$2 WHERE uid=$3",
-                &[&body.title, &body.content, &body.uid],
+                "UPDATE book SET title=$1, content=$2 WHERE uid=$3 AND user_id=$4",
+                &[&body.title, &body.content, &body.uid, &user_id],
             )
             .await?;
     }

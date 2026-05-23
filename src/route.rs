@@ -17,13 +17,14 @@ use crate::middleware::require_auth;
 use axum::middleware;
 use axum::{
     extract::DefaultBodyLimit,
-    http::{header, StatusCode},
+    http::{header, HeaderValue, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Json, Router
 };
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::set_header::SetResponseHeaderLayer;
 
 use crate::book::{
     create::{append_book_node, create_book}, 
@@ -49,14 +50,9 @@ pub async fn home() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::V
     ))
 }
 
-fn blog_routes() -> Router<AppState> {
+// Public read routes — no authentication required
+fn blog_read_routes() -> Router<AppState> {
     Router::new()
-        .route("/create", post(create_blog))
-        .route("/edit/main", post(edit_blog))
-        .route("/edit/node", post(edit_blog_node))
-        .route("/delete", post(delete_blog))
-        .route("/delete/node", post(delete_blog_node))
-        .route("/append/node", post(append_blog_node))
         .route("/get/nodes", get(get_all_blog_nodes))
         .route("/get/:page_no/by_page", get(get_all_blogs_by_page_no))
         .route("/get/:user_id/get_users_blog", get(get_users_blog))
@@ -64,14 +60,8 @@ fn blog_routes() -> Router<AppState> {
         .route("/get/home_blogs", get(get_home_blogs))
 }
 
-fn book_routes() -> Router<AppState> {
+fn book_read_routes() -> Router<AppState> {
     Router::new()
-        .route("/create", post(create_book))
-        .route("/edit/main", post(edit_book))
-        .route("/edit/node", post(edit_book_node))
-        .route("/delete", post(delete_book))
-        .route("/delete/node", post(delete_book_node))
-        .route("/append/node", post(append_book_node))
         .route("/get/chapter", get(get_chapter_details))
         .route("/get/section", get(get_section_details))
         .route("/get/nav", get(get_book_chapters_and_sections))
@@ -81,6 +71,34 @@ fn book_routes() -> Router<AppState> {
         .route("/get/home_books", get(get_home_books))
 }
 
+fn file_read_routes() -> Router<AppState> {
+    Router::new()
+        .route("/blog/:uid/:size/:filename", get(get_blog_file))
+        .route("/book/:uid/:size/:filename", get(get_book_file))
+        .route("/tmp/:uid/:size/:filename", get(get_tmp_file))
+}
+
+// Authenticated write routes — require a valid session
+fn blog_write_routes() -> Router<AppState> {
+    Router::new()
+        .route("/create", post(create_blog))
+        .route("/edit/main", post(edit_blog))
+        .route("/edit/node", post(edit_blog_node))
+        .route("/delete", post(delete_blog))
+        .route("/delete/node", post(delete_blog_node))
+        .route("/append/node", post(append_blog_node))
+}
+
+fn book_write_routes() -> Router<AppState> {
+    Router::new()
+        .route("/create", post(create_book))
+        .route("/edit/main", post(edit_book))
+        .route("/edit/node", post(edit_book_node))
+        .route("/delete", post(delete_book))
+        .route("/delete/node", post(delete_book_node))
+        .route("/append/node", post(append_book_node))
+}
+
 fn user_routes() -> Router<AppState> {
     Router::new()
         .route("/:user_id/subscribe", post(subscribe_user))
@@ -88,27 +106,54 @@ fn user_routes() -> Router<AppState> {
         .route("/get_subscribed_users", get(get_subscribed_users))
 }
 
-fn file_routes() -> Router<AppState> {
+fn file_write_routes() -> Router<AppState> {
     Router::new()
-        .route("/upload", post(upload_file))  
-        .route("/blog/:uid/:size/:filename", get(get_blog_file))
-        .route("/book/:uid/:size/:filename", get(get_book_file))
-        .route("/tmp/:uid/:size/:filename", get(get_tmp_file))
+        .route("/upload", post(upload_file))
 }
 
 pub async fn create_router(app_state: AppState) -> Router {
-    let session = AppSession::new(&app_state.config.redis,Duration::days(1)).await;
+    let session = AppSession::new(&app_state.config.redis, Duration::days(1)).await;
     let cors = init_cors(&app_state.config.app.allowed_origins);
 
-    Router::new()
-        .nest("/blog", blog_routes())
-        .nest("/book", book_routes())
+    let security_headers = ServiceBuilder::new()
+        .layer(SetResponseHeaderLayer::overriding(
+            header::X_CONTENT_TYPE_OPTIONS,
+            HeaderValue::from_static("nosniff"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::X_FRAME_OPTIONS,
+            HeaderValue::from_static("DENY"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::STRICT_TRANSPORT_SECURITY,
+            HeaderValue::from_static("max-age=63072000; includeSubDomains"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::REFERRER_POLICY,
+            HeaderValue::from_static("strict-origin-when-cross-origin"),
+        ));
+
+    // Routes that require a valid access_token cookie
+    let protected = Router::new()
+        .nest("/blog", blog_write_routes())
+        .nest("/book", book_write_routes())
         .nest("/user", user_routes())
-        .nest("/file", file_routes())
-        .route("/", get(home))
+        .nest("/file", file_write_routes())
         .with_state(app_state.clone())
-        .layer(middleware::from_fn_with_state(app_state.clone(), require_auth))
-        .layer(cors.clone())
+        .layer(middleware::from_fn_with_state(app_state.clone(), require_auth));
+
+    // Routes accessible without authentication
+    let public = Router::new()
+        .nest("/blog", blog_read_routes())
+        .nest("/book", book_read_routes())
+        .nest("/file", file_read_routes())
+        .route("/", get(home))
+        .with_state(app_state.clone());
+
+    Router::new()
+        .merge(public)
+        .merge(protected)
+        .layer(cors)
         .layer(session)
         .layer(DefaultBodyLimit::disable())
         .layer(
@@ -116,4 +161,5 @@ pub async fn create_router(app_state: AppState) -> Router {
                 .layer(RequestBodyLimitLayer::new(12 * 1024 * 1024))
                 .into_inner(),
         )
+        .layer(security_headers)
 }

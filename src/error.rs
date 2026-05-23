@@ -82,14 +82,14 @@ impl From<ParseIntError> for AppError {
 }
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let body = match self {
-            AppError::NotFound(e) => e,
-            AppError::BadRequest(e) => e,
-            AppError::InternalServerError(e) => e,
-            AppError::Error((status_code, msg)) => {
-                return (status_code, msg).into_response();
-            },
-        };
-        (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
+        match self {
+            AppError::NotFound(e) => (StatusCode::NOT_FOUND, e).into_response(),
+            AppError::BadRequest(e) => (StatusCode::BAD_REQUEST, e).into_response(),
+            AppError::InternalServerError(e) => {
+                tracing::error!(error = %e, "internal server error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
+            }
+            AppError::Error((status_code, msg)) => (status_code, msg).into_response(),
+        }
     }
 }

@@ -10,7 +10,7 @@ impl AppSession {
         let pool = AppSession::redis(route).await;
         let session_store = RedisStore::new(pool);
         let session_layer = SessionManagerLayer::new(session_store)
-            .with_same_site(cookie::SameSite::None)
+            .with_same_site(cookie::SameSite::Lax)
             .with_secure(true)
             .with_http_only(true)
             .with_expiry(Expiry::OnInactivity(inactivity_duration));

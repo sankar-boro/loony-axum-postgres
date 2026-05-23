@@ -132,8 +132,8 @@ pub async fn append_book_node(
 
     let has_row_update = conn
         .query_one(
-            "SELECT uid, parent_id, identity from book where parent_id=$1 AND identity=$2 AND deleted_at is NULL",
-            &[&body.parent_id, &body.identity],
+            "SELECT uid, parent_id, identity from book where parent_id=$1 AND identity=$2 AND user_id=$3 AND deleted_at is NULL",
+            &[&body.parent_id, &body.identity, &user_id],
         )
         .await;
 
@@ -143,7 +143,7 @@ pub async fn append_book_node(
     )
     .await?;
     let state2 = conn
-        .prepare("UPDATE book SET parent_id=$1 where uid=$2 RETURNING uid")
+        .prepare("UPDATE book SET parent_id=$1 WHERE uid=$2 AND user_id=$3 RETURNING uid")
         .await?;
 
     let transaction = conn.transaction().await?;
@@ -174,7 +174,7 @@ pub async fn append_book_node(
 
             if &body.identity >= &identity.unwrap() {
                 transaction
-                    .execute(&state2, &[&new_node_id, &update_row_id])
+                    .execute(&state2, &[&new_node_id, &update_row_id, &user_id])
                     .await?;
                 update_node = Some(json!({
                     "uid": update_row_id,

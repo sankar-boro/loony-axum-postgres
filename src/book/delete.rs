@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
     extract::State,
@@ -9,6 +10,7 @@ use axum::{
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 pub struct DeleteBook {
@@ -30,24 +32,26 @@ struct UpdateNode {
 }
 
 pub async fn delete_book(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<DeleteBook>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.conn.get().await?;
     let current_time = Local::now();
 
     let state1 = conn
-        .prepare("UPDATE book SET deleted_at=$1 WHERE doc_id=$2")
+        .prepare("UPDATE book SET deleted_at=$1 WHERE doc_id=$2 AND user_id=$3")
         .await?;
     let state2 = conn
-        .prepare("UPDATE books SET deleted_at=$1 WHERE uid=$2")
+        .prepare("UPDATE books SET deleted_at=$1 WHERE uid=$2 AND user_id=$3")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
-        .execute(&state1, &[&current_time, &body.doc_id])
+        .execute(&state1, &[&current_time, &body.doc_id, &user_id])
         .await?;
     transaction
-        .execute(&state2, &[&current_time, &body.doc_id])
+        .execute(&state2, &[&current_time, &body.doc_id, &user_id])
         .await?;
     transaction.commit().await?;
 
@@ -61,9 +65,11 @@ pub async fn delete_book(
 }
 
 pub async fn delete_book_node(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<DeleteBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.conn.get().await?;
 
     // Prepare to find ids to delete
@@ -106,22 +112,22 @@ pub async fn delete_book_node(
         .await?;
     let current_time = Local::now();
     let state1 = conn
-        .prepare("UPDATE book set deleted_at=$1 WHERE uid=ANY($2)")
+        .prepare("UPDATE book SET deleted_at=$1 WHERE uid=ANY($2) AND user_id=$3")
         .await?;
     let update_bot_node_query = conn
-        .prepare("UPDATE book SET parent_id=$1 WHERE uid=$2")
+        .prepare("UPDATE book SET parent_id=$1 WHERE uid=$2 AND user_id=$3")
         .await?;
     let transaction = conn.transaction().await?;
     let num_deleted_rows = transaction
-        .execute(&state1, &[&current_time, &delete_row_ids])
+        .execute(&state1, &[&current_time, &delete_row_ids, &user_id])
         .await?;
-    
+
     let mut update_response: Option<UpdateNode> = None;
     if let Some(update_row) = update_row_exist {
         if !update_row.is_empty() {
             let update_id: i32 = update_row.get(0);
             transaction
-            .execute(&update_bot_node_query, &[&body.parent_id, &update_id])
+            .execute(&update_bot_node_query, &[&body.parent_id, &update_id, &user_id])
             .await?;
             update_response = Some(UpdateNode {
                 uid: update_id,

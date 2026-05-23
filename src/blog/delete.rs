@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
     extract::State,
@@ -9,7 +10,7 @@ use axum::{
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-
+use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 struct UpdateNode {
@@ -24,29 +25,27 @@ pub struct DeleteBlogNode {
 }
 
 pub async fn delete_blog_node(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<DeleteBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.conn.get().await?;
     let current_time = Local::now();
 
     let state1 = conn
-        .prepare("UPDATE blog set deleted_at=$1 WHERE uid=$2")
+        .prepare("UPDATE blog SET deleted_at=$1 WHERE uid=$2 AND user_id=$3")
         .await?;
-
     let state2 = conn
-        .prepare("UPDATE blog set parent_id=$1 WHERE uid=$2")
+        .prepare("UPDATE blog SET parent_id=$1 WHERE uid=$2 AND user_id=$3")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
-        .execute(&state1, &[&current_time, &body.delete_node.uid])
+        .execute(&state1, &[&current_time, &body.delete_node.uid, &user_id])
         .await?;
     if let Some(update_node) = &body.update_node {
         transaction
-            .execute(
-                &state2,
-                &[&update_node.parent_id, &update_node.uid],
-            )
+            .execute(&state2, &[&update_node.parent_id, &update_node.uid, &user_id])
             .await?;
     }
     transaction.commit().await?;
@@ -64,23 +63,25 @@ pub struct DeleteBlog {
 }
 
 pub async fn delete_blog(
+    session: Session,
     State(pool): State<AppState>,
     Json(body): Json<DeleteBlog>,
 ) -> Result<impl IntoResponse, AppError> {
+    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.conn.get().await?;
     let current_time = Local::now();
     let state1 = conn
-        .prepare("UPDATE blogs SET deleted_at=$1 WHERE uid=$2")
+        .prepare("UPDATE blogs SET deleted_at=$1 WHERE uid=$2 AND user_id=$3")
         .await?;
     let state2 = conn
-        .prepare("UPDATE blog SET deleted_at=$1 WHERE doc_id=$2")
+        .prepare("UPDATE blog SET deleted_at=$1 WHERE doc_id=$2 AND user_id=$3")
         .await?;
     let transaction = conn.transaction().await?;
     transaction
-        .execute(&state1, &[&current_time, &body.doc_id])
+        .execute(&state1, &[&current_time, &body.doc_id, &user_id])
         .await?;
     transaction
-        .execute(&state2, &[&current_time, &body.doc_id])
+        .execute(&state2, &[&current_time, &body.doc_id, &user_id])
         .await?;
     transaction.commit().await?;
     Ok((
