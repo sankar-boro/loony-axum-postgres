@@ -6,12 +6,19 @@ use reqwest::header::ACCESS_CONTROL_ALLOW_ORIGIN;
 use tower_http::cors::CorsLayer;
 
 pub fn init_cors(allowed_origins: &str) -> CorsLayer {
-    // Parse the comma-separated string into a Vec<String>
+
     let origins: Vec<HeaderValue> = allowed_origins
-        .split(',')
-        .map(|s| s.parse::<HeaderValue>().unwrap())
+        .split(';')
+        .flat_map(|entry| {
+            let mut parts = entry.split(':');
+            let port = parts.next().unwrap();
+            let protocols = parts.next().unwrap().split(',');
+
+            protocols.map(move |p| format!("{p}://localhost:{port}"))
+        })
+        .filter_map(|s| HeaderValue::from_str(&s).ok())
         .collect();
-    
+
     CorsLayer::new()
         .allow_origin(origins)
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
