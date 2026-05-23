@@ -1,6 +1,5 @@
 use crate::error::AppError;
-use crate::traits::{Images, MoveImages};
-use crate::utils::GetUserId;
+use crate::traits::{move_images_to_s3, Images};
 use crate::AppState;
 use axum::{
     extract::State,
@@ -10,7 +9,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 pub struct EditBook {
@@ -23,19 +21,13 @@ pub struct EditBook {
 
 // @Edit
 pub async fn edit_book(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     Json(body): Json<EditBook>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.conn.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body.images.move_images(
-        &pool.get_tmp_path(),
-        &pool.get_book_path(),
-        user_id,
-        body.doc_id,
-    );
+    let _ = move_images_to_s3(&body.images, pool.s3(), "tmp", "book", user_id, body.doc_id).await;
     let state1 = conn
         .prepare("UPDATE books SET title=$1, content=$2, images=$3 WHERE uid=$4 AND user_id=$5")
         .await?;
@@ -83,19 +75,13 @@ pub struct EditBookNode {
 
 /// # Returns
 pub async fn edit_book_node(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     Json(body): Json<EditBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
     let conn = pool.pg_pool.conn.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
-    let _ = &body.images.move_images(
-        &pool.get_tmp_path(),
-        &pool.get_book_path(),
-        user_id,
-        body.doc_id,
-    );
+    let _ = move_images_to_s3(&body.images, pool.s3(), "tmp", "book", user_id, body.doc_id).await;
     if body.images.len() > 0 {
         let _ = conn
             .execute(

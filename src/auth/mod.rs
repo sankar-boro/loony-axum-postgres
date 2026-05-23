@@ -6,6 +6,7 @@ use cookie::Cookie;
 use crate::{error::AppError, types::{Claims}};
 
 pub(crate) fn decode_token(token: &str, auth_app_name: &str, secret_key: &str) -> Result<Claims, AppError> {
+    println!("Decoding token: {}, auth_app_name: {}, secret_key: {}", token, auth_app_name, secret_key);
     let mut validation = Validation::new(Algorithm::HS256);
     validation.validate_exp = true;
     validation.validate_nbf = true;

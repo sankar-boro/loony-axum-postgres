@@ -1,6 +1,5 @@
 use crate::error::AppError;
-use crate::traits::{Images, MoveImages};
-use crate::utils::GetUserId;
+use crate::traits::{move_images_to_s3, Images};
 use crate::AppState;
 use axum::{
     extract::State,
@@ -10,7 +9,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 pub struct CreateBook {
@@ -23,11 +21,10 @@ pub struct CreateBook {
 // @Create
 
 pub async fn create_book(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     Json(body): Json<CreateBook>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
     let identity: i16 = 100;
     let images = &serde_json::to_string(&body.images).unwrap();
 
@@ -80,12 +77,7 @@ pub async fn create_book(
     //     .await?;
     // }
 
-    let _ = &body.images.move_images(
-        &pool.get_tmp_path(),
-        &pool.get_book_path(),
-        user_id,
-        doc_id,
-    );
+    let _ = move_images_to_s3(&body.images, pool.s3(), "book", "book", user_id, doc_id).await;
 
     let new_book = json!({
         "user_id": &user_id,
@@ -117,14 +109,13 @@ pub struct AddBookNode {
 }
 
 pub async fn append_book_node(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     Json(body): Json<AddBookNode>,
 ) -> Result<impl IntoResponse, AppError> {
     if body.parent_identity == 101 && body.identity == 103 {
         return Err(AppError::InternalServerError(String::from("Not Allowed")));
     }
-    let user_id = session.get_user_id().await?;
     let doc_id = body.doc_id;
     let mut conn = pool.pg_pool.conn.get().await?;
 
@@ -198,12 +189,7 @@ pub async fn append_book_node(
     //     .await?;
     // }
 
-    let _ = &body.images.move_images(
-        &pool.get_tmp_path(),
-        &pool.get_book_path(),
-        user_id,
-        body.doc_id,
-    );
+    let _ = move_images_to_s3(&body.images, pool.s3(), "tmp", "book", user_id, body.doc_id).await;
 
     Ok((
         StatusCode::OK,

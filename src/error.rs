@@ -80,6 +80,22 @@ impl From<ParseIntError> for AppError {
         AppError::InternalServerError(err.to_string())
     }
 }
+impl From<reqwest::Error> for AppError {
+    fn from(err: reqwest::Error) -> Self {
+        AppError::InternalServerError(err.to_string())
+    }
+}
+impl std::fmt::Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AppError::NotFound(e) => write!(f, "not found: {}", e),
+            AppError::BadRequest(e) => write!(f, "bad request: {}", e),
+            AppError::InternalServerError(e) => write!(f, "internal server error: {}", e),
+            AppError::Error((status, msg)) => write!(f, "error {}: {}", status, msg),
+        }
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         match self {

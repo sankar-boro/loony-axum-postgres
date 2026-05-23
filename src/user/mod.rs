@@ -1,5 +1,4 @@
 use crate::error::AppError;
-use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
     extract::Path as AxumPath,
@@ -9,19 +8,16 @@ use axum::{
     Json,
 };
 use serde_json::json;
-use tower_sessions::Session;
 
 pub async fn get_subscribed_users(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
 ) -> Result<impl IntoResponse, AppError> {
-    let auth_user_id = session.get_user_id().await?;
-
     let conn = pool.pg_pool.conn.get().await?;
     let rows = conn
         .query(
             "SELECT subscribed_id FROM subscription WHERE user_id=$1",
-            &[&auth_user_id],
+            &[&user_id],
         )
         .await?;
     let mut subscribed_ids: Vec<i32> = Vec::new();
@@ -36,12 +32,10 @@ pub async fn get_subscribed_users(
 }
 
 pub async fn subscribe_user(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(auth_user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
-    let auth_user_id = session.get_user_id().await?;
-
     let conn = pool.pg_pool.conn.get().await?;
     let row = conn
         .query_one(
@@ -69,12 +63,10 @@ pub async fn subscribe_user(
 }
 
 pub async fn un_subscribe_user(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(auth_user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
 ) -> Result<impl IntoResponse, AppError> {
-    let auth_user_id = session.get_user_id().await?;
-
     let conn = pool.pg_pool.conn.get().await?;
     let row = conn
         .query_one(

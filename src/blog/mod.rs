@@ -3,8 +3,7 @@ pub mod get;
 mod utils;
 
 use crate::error::AppError;
-use crate::traits::{Images, MoveImages};
-use crate::utils::GetUserId;
+use crate::traits::{move_images_to_s3, Images};
 use crate::AppState;
 use axum::{
     extract::State,
@@ -14,7 +13,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 pub struct CreateBlog {
@@ -42,11 +40,10 @@ pub struct GetBlog {
 }
 
 pub async fn create_blog(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     Json(body): Json<CreateBlog>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
 
     let mut conn = pool.pg_pool.conn.get().await?;
@@ -92,12 +89,7 @@ pub async fn create_blog(
     // )
     // .await?;
 
-    let _ = &body.images.move_images(
-        &pool.get_tmp_path(),
-        &pool.get_blog_path(),
-        user_id,
-        doc_id,
-    );
+    let _ = move_images_to_s3(&body.images, pool.s3(), "blog", "blog", user_id, doc_id).await;
 
     let new_blog = json!({
         "doc_id": doc_id,
@@ -115,11 +107,10 @@ pub async fn create_blog(
 }
 
 pub async fn edit_blog(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     Json(body): Json<EditBlog>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
 
     let mut conn = pool.pg_pool.conn.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
@@ -142,12 +133,7 @@ pub async fn edit_blog(
         .await?;
     transaction.commit().await?;
 
-    let _ = &body.images.move_images(
-        &pool.get_tmp_path(),
-        &pool.get_blog_path(),
-        user_id,
-        body.doc_id,
-    );
+    let _ = move_images_to_s3(&body.images, pool.s3(), "tmp", "blog", user_id, body.doc_id).await;
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
@@ -166,11 +152,10 @@ pub struct AddBlogNode {
 }
 
 pub async fn append_blog_node(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     Json(body): Json<AddBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.conn.get().await?;
 
     let update_row = conn
@@ -239,12 +224,7 @@ pub async fn append_blog_node(
     //     .await?;
     // }
     
-    let _ = &body.images.move_images(
-        &pool.get_tmp_path(),
-        &pool.get_book_path(),
-        user_id,
-        body.doc_id,
-    );
+    let _ = move_images_to_s3(&body.images, pool.s3(), "tmp", "blog", user_id, body.doc_id).await;
 
     Ok((
         StatusCode::OK,
@@ -281,11 +261,10 @@ pub struct EditBlogNode {
 }
 
 pub async fn edit_blog_node(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     Json(body): Json<EditBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.conn.get().await?;
     let images = &serde_json::to_string(&body.images).unwrap();
     let state1 = conn
@@ -297,12 +276,7 @@ pub async fn edit_blog_node(
         .execute(&state1, &[&body.title, &body.content, &images, &body.uid, &user_id])
         .await?;
     transaction.commit().await?;
-    let _ = &body.images.move_images(
-        &pool.get_tmp_path(),
-        &pool.get_blog_path(),
-        user_id,
-        body.doc_id,
-    );
+    let _ = move_images_to_s3(&body.images, pool.s3(), "tmp", "blog", user_id, body.doc_id).await;
 
     Ok((
         StatusCode::OK,

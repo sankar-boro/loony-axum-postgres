@@ -1,6 +1,5 @@
 use crate::blog::get::get_home_blogs;
 use crate::book::get::{get_book_chapters_and_sections, get_chapter_details, get_home_books, get_section_details};
-use crate::connections::session::AppSession;
 use crate::user::{get_subscribed_users, subscribe_user, un_subscribe_user};
 use crate::{
     blog::{
@@ -39,7 +38,6 @@ use crate::file::{get_blog_file, get_book_file, get_tmp_file, upload_file};
 
 use crate::AppState;
 use serde_json::json;
-use time::Duration;
 use crate::connections::cors::init_cors;
 
 pub async fn home() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
@@ -112,7 +110,6 @@ fn file_write_routes() -> Router<AppState> {
 }
 
 pub async fn create_router(app_state: AppState) -> Router {
-    let session = AppSession::new(&app_state.config.redis, Duration::days(1)).await;
     let cors = init_cors(&app_state.config.app.allowed_origins);
 
     let security_headers = ServiceBuilder::new()
@@ -154,7 +151,6 @@ pub async fn create_router(app_state: AppState) -> Router {
         .merge(public)
         .merge(protected)
         .layer(cors)
-        .layer(session)
         .layer(DefaultBodyLimit::disable())
         .layer(
             ServiceBuilder::new()

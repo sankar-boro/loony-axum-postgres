@@ -3,12 +3,14 @@ use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub(crate) aud: Option<String>,     // (audience): Intended recipients (like your frontend/client ID).
-    pub(crate) exp: usize,              // (expiration) (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-    pub(crate) iat: Option<usize>,      // (issued at). Issued at (as UTC timestamp)
-    pub(crate) iss: Option<i32>,     // (issuer): Identify your server/application.
-    pub(crate) nbf: Option<usize>,      // (not before): Optional, can prevent tokens from being used before a certain time.
-    pub(crate) sub: Option<String>,     // (subject): Usually the user ID.
+    pub(crate) aud: Option<Vec<String>>,
+    pub(crate) exp: i64,
+    pub(crate) iat: Option<i64>,
+    pub(crate) iss: Option<String>,
+    pub(crate) nbf: Option<i64>,
+    pub(crate) sub: String,
+    pub(crate) user_id: Option<String>,
+    pub(crate) role: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]

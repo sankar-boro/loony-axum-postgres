@@ -34,10 +34,17 @@ pub(crate) struct PostgresConfig {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct S3Config {
+    pub(crate) url: String,
+    pub(crate) jwt_secret: String,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct Config {
     pub(crate) app: AppConfig,
     pub(crate) pg: PostgresConfig,
     pub(crate) redis: String,
+    pub(crate) s3: S3Config,
 }
 
 pub fn init_env_configs() -> Result<Config, AppError> {
@@ -66,6 +73,9 @@ pub fn init_env_configs() -> Result<Config, AppError> {
     let blog_upload = var("BLOG_UPLOADS").unwrap();
     let book_upload = var("BOOK_UPLOADS").unwrap();
 
+    let s3_url = var("S3_URL").unwrap();
+    let s3_jwt_secret = var("S3_JWT_SECRET").unwrap();
+
     Ok(Config {
         app: AppConfig {
             app_env,
@@ -90,6 +100,7 @@ pub fn init_env_configs() -> Result<Config, AppError> {
             dbname: pg_dbname, 
             password: pg_password 
         },
-        redis: redis_route
+        redis: redis_route,
+        s3: S3Config { url: s3_url, jwt_secret: s3_jwt_secret },
     })
 }

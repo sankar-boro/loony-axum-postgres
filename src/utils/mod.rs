@@ -1,30 +1,11 @@
 pub mod doc;
 pub mod response;
 
-use crate::error::AppError;
 use crate::types::ImageMetadata;
-use tower_sessions::Session;
 
-pub trait GetUserId {
-    async fn get_user_id(&self) -> Result<i32, AppError>;
-}
-
-impl GetUserId for Session {
-    async fn get_user_id(&self) -> Result<i32, AppError> {
-        let user_id: i32 = match self.get("user_id").await {
-            Ok(x) => match x {
-                Some(x) => x,
-                None => {
-                    return Err(AppError::InternalServerError(
-                        "User session not found".to_string(),
-                    ))
-                }
-            },
-            Err(e) => return Err(AppError::InternalServerError(e.to_string())),
-        };
-        Ok(user_id)
-    }
-}
+/// User ID injected into request extensions by the `require_auth` middleware.
+#[derive(Clone, Copy)]
+pub struct UserId(pub i32);
 
 pub fn new_height(img_metadata: &ImageMetadata) -> u32 {
     let new_width_percent =

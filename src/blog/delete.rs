@@ -1,5 +1,4 @@
 use crate::error::AppError;
-use crate::utils::GetUserId;
 use crate::AppState;
 use axum::{
     extract::State,
@@ -10,7 +9,6 @@ use axum::{
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tower_sessions::Session;
 
 #[derive(Deserialize, Serialize)]
 struct UpdateNode {
@@ -25,11 +23,10 @@ pub struct DeleteBlogNode {
 }
 
 pub async fn delete_blog_node(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     Json(body): Json<DeleteBlogNode>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.conn.get().await?;
     let current_time = Local::now();
 
@@ -63,11 +60,10 @@ pub struct DeleteBlog {
 }
 
 pub async fn delete_blog(
-    session: Session,
+    axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,
     Json(body): Json<DeleteBlog>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = session.get_user_id().await?;
     let mut conn = pool.pg_pool.conn.get().await?;
     let current_time = Local::now();
     let state1 = conn
