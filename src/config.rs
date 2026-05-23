@@ -13,11 +13,13 @@ pub(crate) struct FileStoragePath {
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub(crate) struct AppConfig {
+    pub(crate) app_env: String,
     pub(crate) app_name: String,
     pub(crate) auth_app_name: String,
     pub(crate) hostname: String,
-    pub(crate) http_port: u16,
-    pub(crate) https_port: u16,
+    pub(crate) port: u16,
+    // pub(crate) http_port: u16,
+    // pub(crate) https_port: u16,
     pub(crate) allowed_origins: String,
     pub(crate) file_storage_path: FileStoragePath,
     pub(crate) secret_key: String,
@@ -39,37 +41,41 @@ pub(crate) struct Config {
 }
 
 pub fn init_env_configs() -> Result<Config, AppError> {
-    let secret_key = var("SECRET_KEY")?;
+    let secret_key = var("SECRET_KEY").unwrap();
 
-    let app_name = var("APP_NAME")?;
-    let auth_app_name = var("AUTH_APP_NAME")?;
+    let app_env = var("APP_ENV").unwrap();
+    let app_name = var("APP_NAME").unwrap();
+    let auth_app_name = var("AUTH_APP_NAME").unwrap();
 
     log::debug!("App Name: {}", app_name);
-    let hostname = var("APP_HOSTNAME")?;
-    let http_port = var("APP_HTTP_PORT")?.parse()?;
-    let https_port = var("APP_HTTPS_PORT")?.parse()?;
+    let hostname = var("APP_HOSTNAME").unwrap();
+    let port = var("PORT").unwrap().parse().unwrap();
+    // let http_port = var("APP_HTTP_PORT")?.parse().unwrap();
+    // let https_port = var("APP_HTTPS_PORT")?.parse().unwrap();
 
-    let allowed_origins = var("ALLOWED_ORIGINS")?;
+    let allowed_origins = var("ALLOWED_ORIGINS").unwrap();
     log::debug!("Allowed origins: {}", allowed_origins);
-    let pg_hostname = var("PG_HOSTNAME")?;
-    let pg_username = var("PG_USERNAME")?;
-    let pg_dbname = var("PG_DBNAME")?;
-    let pg_password = var("PG_PASSWORD")?;
-    let redis_route = var("REDIS_ROUTE")?;
+    let pg_hostname = var("PG_HOSTNAME").unwrap();
+    let pg_username = var("PG_USERNAME").unwrap();
+    let pg_dbname = var("PG_DBNAME").unwrap();
+    let pg_password = var("PG_PASSWORD").unwrap();
+    let redis_route = var("REDIS_ROUTE").unwrap();
 
-    let tmp_upload = var("TMP_UPLOADS")?;
-    let user_upload = var("USER_UPLOADS")?;
-    let blog_upload = var("BLOG_UPLOADS")?;
-    let book_upload = var("BOOK_UPLOADS")?;
+    let tmp_upload = var("TMP_UPLOADS").unwrap();
+    let user_upload = var("USER_UPLOADS").unwrap();
+    let blog_upload = var("BLOG_UPLOADS").unwrap();
+    let book_upload = var("BOOK_UPLOADS").unwrap();
 
     Ok(Config {
         app: AppConfig {
+            app_env,
             app_name,
             auth_app_name,
             secret_key, 
             hostname, 
-            http_port, 
-            https_port, 
+            port,
+            // http_port, 
+            // https_port, 
             allowed_origins, 
             file_storage_path: FileStoragePath { 
                 tmp: tmp_upload, 

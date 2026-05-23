@@ -18,8 +18,14 @@ impl AppState {
     pub fn get_book_path(&self) -> &str {
         &self.config.app.file_storage_path.book
     }
-    pub fn get_user_path(&self) -> &str {
-        &self.config.app.file_storage_path.user
+    // pub fn get_user_path(&self) -> &str {
+    //     &self.config.app.file_storage_path.user
+    // }
+    pub fn port(&self) -> &u16 {
+        &self.config.app.port
+    }
+    pub fn app_env(&self) -> &str {
+        &self.config.app.app_env
     }
 }
 

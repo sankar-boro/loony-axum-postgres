@@ -30,6 +30,7 @@ impl PgConnection {
         let test_conn = tokio::time::timeout(tokio::time::Duration::from_secs(3), conn.get()).await.expect("Failed to connect to database.");
         let test_conn = test_conn.unwrap();
         test_conn.query("select * from blogs", &[]).await.unwrap();
+        tracing::info!("Successfully connected to Postgres database.");
         
         PgConnection {
             conn: conn.clone()
