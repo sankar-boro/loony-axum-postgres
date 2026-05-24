@@ -116,7 +116,6 @@ pub async fn append_book_node(
     if body.parent_identity == 101 && body.identity == 103 {
         return Err(AppError::InternalServerError(String::from("Not Allowed")));
     }
-    let doc_id = body.doc_id;
     let mut conn = pool.pg_pool.conn.get().await?;
 
     let images = &serde_json::to_string(&body.images).unwrap();

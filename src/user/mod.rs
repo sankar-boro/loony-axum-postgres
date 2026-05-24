@@ -43,7 +43,7 @@ pub async fn subscribe_user(
             &[&auth_user_id, &user_id],
         )
         .await?;
-    let mut message = String::from("");
+    let message;
     if row.is_empty() {
         message = String::from("Created");
         conn.query_one(
@@ -75,7 +75,7 @@ pub async fn un_subscribe_user(
         )
         .await?;
 
-    let mut message = String::from("");
+    let message;
 
     if row.is_empty() {
         message = String::from("Column does not exist.");

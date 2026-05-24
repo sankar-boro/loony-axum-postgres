@@ -1,7 +1,7 @@
-use bb8::{Pool, PooledConnection};
+use bb8::Pool;
 use bb8_postgres::{bb8, PostgresConnectionManager};
-use tokio_postgres::{types::ToSql, Config, NoTls, Row};
-use crate::{config::PostgresConfig, error::AppError};
+use tokio_postgres::{Config, NoTls};
+use crate::config::PostgresConfig;
 
 #[derive(Clone)]
 pub struct PgConnection {
@@ -37,27 +37,4 @@ impl PgConnection {
         }
     }
 
-    pub async fn query_opt(&self, query: &str, params: &[&(dyn ToSql + Sync)]) -> Result<Option<Row>, AppError> {
-        let conn: PooledConnection<'_, PostgresConnectionManager<NoTls>> = self.conn.get().await?;
-        let row: Option<Row> = conn.query_opt(query, params).await?;
-        Ok(row)
-    }
-
-    pub async fn query_one(&self, query: &str, params: &[&(dyn ToSql + Sync)]) -> Result<Row, AppError> {
-        let conn: PooledConnection<'_, PostgresConnectionManager<NoTls>> = self.conn.get().await?;
-        let row: Row = conn.query_one(query, params).await?;
-        Ok(row)
-    }
-
-    pub async fn execute(&self, query: &str, params: &[&(dyn ToSql + Sync)]) -> Result<u64, AppError> {
-        let conn: PooledConnection<'_, PostgresConnectionManager<NoTls>> = self.conn.get().await?;
-        let row: u64 = conn.execute(query, params).await?;
-        Ok(row)
-    }
-
-    pub async fn transaction(&self, query: &str, params: &[&(dyn ToSql + Sync)]) -> Result<u64, AppError> {
-        let conn: PooledConnection<'_, PostgresConnectionManager<NoTls>> = self.conn.get().await?;
-        let row: u64 = conn.execute(query, params).await?;
-        Ok(row)
-    }
 }

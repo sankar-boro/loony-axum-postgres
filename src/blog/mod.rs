@@ -31,14 +31,6 @@ pub struct EditBlog {
     images: Vec<Images>,
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct GetBlog {
-    doc_id: i32,
-    title: String,
-    content: String,
-    images: String,
-}
-
 pub async fn create_blog(
     axum::extract::Extension(crate::utils::UserId(user_id)): axum::extract::Extension<crate::utils::UserId>,
     State(pool): State<AppState>,

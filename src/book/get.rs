@@ -6,7 +6,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use crate::types::{Book, BookParentNode, NavNodes, ChildNode};
 use crate::{fetch_books_by_user_id};
@@ -169,39 +169,6 @@ pub async fn get_section_details(
     ))
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct BookNodesByPageId {
-    uid: i32,
-    parent_id: Option<i32>,
-    title: String,
-    content: String,
-    images: Option<String>,
-    identity: i16,
-    page_id: Option<i32>,
-}
-
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct BookChaptersAndSections {
-    uid: i32,
-    parent_id: Option<i32>,
-    title: String,
-    identity: i16,
-    page_id: Option<i32>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct MainNode {
-    uid: i32,
-    parent_id: Option<i32>,
-    title: String,
-    content: String,
-    images: Option<String>,
-    identity: i16,
-    page_id: Option<i32>,
-
-}
-
 pub async fn get_book_chapters_and_sections(
     State(pool): State<AppState>,
     query: Query<ChaptersByBookIdRequest>,
@@ -220,16 +187,6 @@ pub async fn get_book_chapters_and_sections(
     ))
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct BookNodesBySectionId {
-    uid: i32,
-    parent_id: Option<i32>,
-    title: String,
-    content: String,
-    images: Option<String>,
-    identity: i16,
-    page_id: Option<i32>,
-}
 
 // @End Get
 

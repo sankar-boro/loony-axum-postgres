@@ -43,7 +43,6 @@ pub(crate) struct S3Config {
 pub(crate) struct Config {
     pub(crate) app: AppConfig,
     pub(crate) pg: PostgresConfig,
-    pub(crate) redis: String,
     pub(crate) s3: S3Config,
 }
 
@@ -66,8 +65,6 @@ pub fn init_env_configs() -> Result<Config, AppError> {
     let pg_username = var("PG_USERNAME").unwrap();
     let pg_dbname = var("PG_DBNAME").unwrap();
     let pg_password = var("PG_PASSWORD").unwrap();
-    let redis_route = var("REDIS_ROUTE").unwrap();
-
     let tmp_upload = var("TMP_UPLOADS").unwrap();
     let user_upload = var("USER_UPLOADS").unwrap();
     let blog_upload = var("BLOG_UPLOADS").unwrap();
@@ -100,7 +97,6 @@ pub fn init_env_configs() -> Result<Config, AppError> {
             dbname: pg_dbname, 
             password: pg_password 
         },
-        redis: redis_route,
         s3: S3Config { url: s3_url, jwt_secret: s3_jwt_secret },
     })
 }

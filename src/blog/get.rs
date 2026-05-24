@@ -166,16 +166,6 @@ pub async fn get_all_blog_nodes(
     ))
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct HomeBlogsResponse {
-    uid: i32,
-    title: String,
-    content: String,
-    images: String,
-    created_at: DateTime<Utc>,
-    doc_type: u8,
-}
-
 pub async fn get_users_blog(
     State(pool): State<AppState>,
     AxumPath(user_id): AxumPath<i32>,
