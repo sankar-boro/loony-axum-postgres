@@ -32,20 +32,33 @@ impl S3Client {
             .map_err(|e| AppError::InternalServerError(e.to_string()))
     }
 
-    /// Create a bucket if it does not already exist.
+    /// Create a bucket if it does not already exist, then ensure ACL is public-read-write.
     pub async fn ensure_bucket(&self, bucket: &str) -> Result<(), AppError> {
         let token = self.make_jwt("system")?;
-        let url = format!("{}/buckets", self.base_url);
-        let resp = self.http.post(&url)
+        let create_url = format!("{}/buckets", self.base_url);
+        let resp = self.http.post(&create_url)
             .bearer_auth(&token)
-            .json(&json!({ "name": bucket, "acl": "public-read" }))
+            .json(&json!({ "name": bucket, "acl": "public-read-write" }))
             .send()
             .await?;
         let status = resp.status().as_u16();
-        // 201 created, 409 already exists — both acceptable
         if status != 201 && status != 409 {
             let body = resp.text().await.unwrap_or_default();
             tracing::warn!(bucket, status, body, "ensure_bucket unexpected response");
+            return Ok(());
+        }
+        // If bucket already existed, patch its ACL so any authenticated user can write.
+        if status == 409 {
+            let patch_url = format!("{}/buckets/{}", self.base_url, bucket);
+            let patch_resp = self.http.patch(&patch_url)
+                .bearer_auth(&token)
+                .json(&json!({ "acl": "public-read-write" }))
+                .send()
+                .await?;
+            if !patch_resp.status().is_success() {
+                let ps = patch_resp.status().as_u16();
+                tracing::warn!(bucket, ps, "ensure_bucket patch acl failed");
+            }
         }
         Ok(())
     }
