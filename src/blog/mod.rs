@@ -89,7 +89,7 @@ pub async fn create_blog(
     // )
     // .await?;
 
-    let _ = move_images_to_s3(&body.images, pool.s3(), "blog", "blog", user_id, doc_id).await;
+    let _ = move_images_to_s3(&body.images, pool.s3(), "tmp", "blog", user_id, doc_id).await;
 
     let new_blog = json!({
         "doc_id": doc_id,

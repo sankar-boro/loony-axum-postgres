@@ -77,7 +77,7 @@ pub async fn create_book(
     //     .await?;
     // }
 
-    let _ = move_images_to_s3(&body.images, pool.s3(), "book", "book", user_id, doc_id).await;
+    let _ = move_images_to_s3(&body.images, pool.s3(), "tmp", "book", user_id, doc_id).await;
 
     let new_book = json!({
         "user_id": &user_id,
