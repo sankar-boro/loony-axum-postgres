@@ -41,4 +41,5 @@ log = "0.4.2"
 # Search
 tantivy = "0.22.0"
 tempfile = "3.14.0"
+zip = { version = "2", default-features = false, features = ["deflate"] }
 axum-server = { version = "0.7.2", features = ["tls-rustls"]}

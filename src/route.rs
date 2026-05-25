@@ -26,13 +26,11 @@ use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
 
 use crate::book::{
-    create::{append_book_node, create_book}, 
+    create::{append_book_node, create_book},
     delete::{delete_book, delete_book_node},
     edit::{edit_book, edit_book_node},
-    get::{
-        get_all_books_by_page_no, get_all_books_by_user_id,
-        get_users_book
-    },
+    get::{get_all_books_by_page_no, get_all_books_by_user_id, get_users_book},
+    upload::upload_book,
 };
 use crate::file::{get_blog_file, get_book_file, get_tmp_file, upload_file};
 
@@ -95,6 +93,11 @@ fn book_write_routes() -> Router<AppState> {
         .route("/delete", post(delete_book))
         .route("/delete/node", post(delete_book_node))
         .route("/append/node", post(append_book_node))
+        // ZIP upload — override body limit to 50 MB for this route only
+        .route(
+            "/upload",
+            post(upload_book).layer(DefaultBodyLimit::max(50 * 1024 * 1024)),
+        )
 }
 
 fn user_routes() -> Router<AppState> {
